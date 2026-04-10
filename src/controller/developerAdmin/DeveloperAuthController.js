@@ -411,16 +411,19 @@ export const profile = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const { name, phoneNumber, address } = req.body;
+
+    const updateData = { name, phoneNumber, address };
+
+    if (req.imageUrl) {
+      updateData.image = req.imageUrl;
+    }
+
     const update = await Admin.findOneAndUpdate(
       { _id: req.developer_id },
-      {
-        name,
-        phoneNumber,
-        address,
-        [req.imageUrl ? 'image' : '']: req.imageUrl,
-      },
+      { $set: updateData },
       { new: true }
-    );
+    ).select('-password');
+
     return ResponseHandler(
       res,
       StatusCodes.OK,

@@ -411,7 +411,7 @@ const developerUpdateProfileSchema = joi.object({
   email: joistring.optional().email().label('Email'),
   phoneNumber: joistring.optional().label('Phone number'),
   address: joistring.optional().allow('').label('Address'),
-  image: joistring.optional().allow('').label('Image'),
+  imageUrl: commonImageValidation(false).label('Image'),
 });
 
 const adminVerifyLoginOtpSchema = joi.object({
