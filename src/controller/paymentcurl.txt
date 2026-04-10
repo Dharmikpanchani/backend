@@ -1,0 +1,220 @@
+import React, { useState } from "react";
+import axios from "axios";
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+function App() {
+  const [loading, setLoading] = useState(false);
+  const [transactions, setTransactions] = useState([]);
+  const [txnId, setTxnId] = useState(null);
+
+  // ================= PAYMENT =================
+  const handlePayment = async () => {
+    try {
+      setLoading(true);
+
+      // 1️⃣ Create Order
+      const { data } = await axios.post(
+        "http://localhost:3032/api/payment/create-order",
+        {
+          amount: 1,
+          schoolId: "507f1f77bcf86cd799439011",
+          userId: "507f1f77bcf86cd799439012",
+          planId: "507f1f77bcf86cd799439013",
+        }
+      );
+
+      const { order, transactionId } = data.data;
+      setTxnId(transactionId);
+
+      // 2️⃣ Razorpay Checkout
+      const options = {
+        // key: "rzp_test_SUZIviB9qe39Q5", //test mode
+        key: "rzp_live_SUgYbTUj3hREZv", //live mode
+        amount: order.amount,
+        currency: order.currency,
+        name: "School ERP",
+        description: "Subscription Payment",
+        order_id: order.id,
+
+        handler: async function (response) {
+          try {
+            await axios.post(
+              "http://localhost:3032/api/payment/verify",
+              {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              }
+            );
+
+            alert("✅ Payment Verified (Webhook pending)");
+
+            // ⏳ wait for webhook update
+            setTimeout(() => {
+              getTransactions();
+            }, 2000);
+          } catch (err) {
+            console.error(err);
+            alert("❌ Verification Failed");
+          }
+        },
+
+        modal: {
+          ondismiss: function () {
+            alert("⚠️ Payment popup closed");
+          },
+        },
+
+        prefill: {
+          name: "Dharmik",
+          email: "test@example.com",
+          contact: "9999999999",
+        },
+
+        theme: {
+          color: "#4f46e5",
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.open();
+    } catch (error) {
+      console.error(error);
+      alert("❌ Payment Failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ================= GET TRANSACTIONS =================
+  const getTransactions = async () => {
+    try {
+      const res = await axios.get(
+        "http://localhost:3032/api/payment/transactions"
+      );
+      setTransactions(res.data.data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // ================= STATUS COLOR =================
+  const getStatusColor = (status) => {
+    switch (status) {
+      case "success":
+        return "green";
+      case "failed":
+        return "red";
+      case "pending":
+        return "orange";
+      case "authorized":
+        return "blue";
+      default:
+        return "black";
+    }
+  };
+
+  return (
+    <div style={styles.container}>
+      <div style={styles.card}>
+        <h1 style={styles.title}>School Payment</h1>
+        <p style={styles.amount}>₹500</p>
+
+        <button onClick={handlePayment} style={styles.button}>
+          {loading ? "Processing..." : "Pay Now"}
+        </button>
+
+        <button onClick={getTransactions} style={styles.button2}>
+          Get Transactions
+        </button>
+
+        {txnId && (
+          <p style={{ marginTop: "10px", fontSize: "12px" }}>
+            Txn ID: {txnId}
+          </p>
+        )}
+
+        {/* ================= TRANSACTION LIST ================= */}
+        <div style={{ marginTop: "20px", textAlign: "left" }}>
+          {transactions.map((t) => (
+            <div key={t._id} style={styles.txn}>
+              <p><b>Amount:</b> ₹{t.amount}</p>
+
+              <p>
+                <b>Status:</b>{" "}
+                <span style={{ color: getStatusColor(t.status) }}>
+                  {t.status}
+                </span>
+              </p>
+
+              <p><b>Method:</b> {t.method || "-"}</p>
+
+              {t.startDate && (
+                <p>
+                  <b>Plan:</b>{" "}
+                  {new Date(t.startDate).toLocaleDateString()} →{" "}
+                  {new Date(t.endDate).toLocaleDateString()}
+                </p>
+              )}
+
+              <hr />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default App;
+
+// ================= STYLES =================
+const styles = {
+  container: {
+    height: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "#f3f4f6",
+  },
+  card: {
+    padding: "40px",
+    borderRadius: "12px",
+    background: "#fff",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+    textAlign: "center",
+    width: "350px",
+  },
+  title: {
+    marginBottom: "10px",
+  },
+  amount: {
+    fontSize: "32px",
+    fontWeight: "bold",
+    marginBottom: "20px",
+  },
+  button: {
+    padding: "12px 30px",
+    fontSize: "18px",
+    background: "#4f46e5",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    marginBottom: "10px",
+  },
+  button2: {
+    padding: "10px 20px",
+    fontSize: "14px",
+    background: "#10b981",
+    color: "#fff",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+  },
+  txn: {
+    background: "#f9fafb",
+    padding: "10px",
+    borderRadius: "8px",
+    marginBottom: "10px",
+  },
+};
