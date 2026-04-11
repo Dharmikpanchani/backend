@@ -16,13 +16,13 @@ const logger = new Logger(
 //#region ➕ Add / ✏️ Edit Subject
 export const addEditSubject = async (req, res) => {
   try {
-    const { id, name, code, departmentId } = req.body;
+    const { id, name, code, departmentIds } = req.body;
     const schoolId = req.school_id;
 
     const payload = {
       name: name?.trim(),
       code: code?.trim(),
-      departmentId,
+      departmentIds,
       schoolId,
     };
 
@@ -43,7 +43,6 @@ export const addEditSubject = async (req, res) => {
 
       const duplicate = await Subject.findOne({
         _id: { $ne: id },
-        departmentId: payload.departmentId,
         $or: [{ code: payload.code }, { name: payload.name }],
         ...req.schoolFilter,
       });
@@ -58,7 +57,7 @@ export const addEditSubject = async (req, res) => {
 
       const result = await Subject.findByIdAndUpdate(id, payload, {
         new: true,
-      });
+      }).populate([{ path: 'departmentIds', select: 'name code' }]);
 
       return ResponseHandler(
         res,
@@ -69,7 +68,6 @@ export const addEditSubject = async (req, res) => {
     } else {
       // 🔹 Create flow
       const duplicate = await Subject.findOne({
-        departmentId: payload.departmentId,
         $or: [{ code: payload.code }, { name: payload.name }],
         ...req.schoolFilter,
       });
@@ -84,7 +82,6 @@ export const addEditSubject = async (req, res) => {
 
       // Check for soft-deleted one to restore
       const deletedSubject = await Subject.findOne({
-        departmentId: payload.departmentId,
         $or: [{ code: payload.code }, { name: payload.name }],
         schoolId,
         isDeleted: true,
@@ -96,9 +93,10 @@ export const addEditSubject = async (req, res) => {
           deletedSubject._id,
           { ...payload, isDeleted: false, isActive: true },
           { new: true }
-        );
+        ).populate([{ path: 'departmentIds', select: 'name code' }]);
       } else {
         result = await Subject.create(payload);
+        await result.populate([{ path: 'departmentIds', select: 'name code' }]);
       }
 
       return ResponseHandler(
@@ -119,7 +117,7 @@ export const addEditSubject = async (req, res) => {
 export const getSubjects = async (req, res) => {
   try {
     const {
-      departmentId,
+      departmentIds,
       pageNumber,
       perPageData,
       searchRequest,
@@ -137,8 +135,8 @@ export const getSubjects = async (req, res) => {
       filters.isActive = isActive;
     }
 
-    if (departmentId) {
-      filters.departmentId = departmentId;
+    if (departmentIds) {
+      filters.departmentIds = { $in: Array.isArray(departmentIds) ? departmentIds : [departmentIds] };
     }
 
     let extraOrConditions = [];
@@ -150,7 +148,7 @@ export const getSubjects = async (req, res) => {
 
       if (matchingDepartments.length > 0) {
         extraOrConditions.push({
-          departmentId: { $in: matchingDepartments.map((d) => d._id) },
+          departmentIds: { $in: matchingDepartments.map((d) => d._id) },
         });
       }
     }
@@ -164,7 +162,7 @@ export const getSubjects = async (req, res) => {
       booleanFields: ['isActive'],
       sort: { createdAt: -1 },
       filters,
-      populate: [{ path: 'departmentId', select: 'name code' }],
+      populate: [{ path: 'departmentIds', select: 'name code' }],
     });
 
     const data = type
@@ -232,7 +230,7 @@ export const getSubjectById = async (req, res) => {
     const data = await Subject.findOne({
       _id: req.params.id,
       ...req.schoolFilter,
-    }).populate([{ path: 'departmentId', select: 'name code' }]);
+    }).populate([{ path: 'departmentIds', select: 'name code' }]);
 
     if (!data) {
       return ResponseHandler(
@@ -277,7 +275,7 @@ export const subjectStatusHandler = async (req, res) => {
       id,
       { isActive: !subject.isActive },
       { new: true }
-    );
+    ).populate([{ path: 'departmentIds', select: 'name code' }]);
 
     return ResponseHandler(
       res,

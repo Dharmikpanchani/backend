@@ -216,4 +216,13 @@ export const responseMessage = {
     'User with this email or phone already exists in this school.',
   ANOTHER_TEACHER_ALREADY_EXISTS:
     'Another user with this email or phone already exists.',
+  ATTENDANCE_ID_ALREADY_EXISTS: 'Attendance ID is already in use.',
+  INVALID_IFSC_CODE_FORMAT: 'Invalid IFSC code format.',
+  INVALID_OTP_TYPE: 'Invalid OTP type.',
+  THEME_UPDATED_SUCCESSFULLY: 'Theme updated successfully.',
+  PAYMENT_SIGNATURE_INVALID: 'Invalid payment signature.',
+  TRANSACTION_FETCH_SUCCESS: 'Transactions retrieved successfully.',
+  OTP_BLOCKED: 'You are blocked due to too many failed attempts.',
+  TOO_MANY_OTP_ATTEMPTS: 'Too many wrong OTP attempts.',
+  TOO_MANY_OTP_REQUESTS: 'Too many OTP requests.',
 };

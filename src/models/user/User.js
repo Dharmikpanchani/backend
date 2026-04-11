@@ -30,8 +30,27 @@ const UserSchema = new mongoose.Schema(
     },
     userType: {
       type: String,
-      enum: ['student', 'teacher'],
-      required: false,
+      enum: ['student', 'teacher', 'admin'],
+      required: true,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    lastLogin: {
+      type: Date,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    attendanceId: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true }

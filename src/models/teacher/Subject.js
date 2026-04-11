@@ -10,11 +10,13 @@ const SubjectSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    departmentId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Department',
-      required: true,
-    },
+    departmentIds: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Department',
+        required: true,
+      },
+    ],
     schoolId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'School',

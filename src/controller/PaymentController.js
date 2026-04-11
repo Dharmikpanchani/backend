@@ -1,6 +1,11 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import PaymentTransaction from '../models/PaymentTransaction.js';
+import {
+  ResponseHandler,
+  CatchErrorHandler,
+} from '../services/CommonServices.js';
+import { StatusCodes } from 'http-status-codes';
 import { responseMessage } from '../utils/ResponseMessage.js';
 import Logger from '../utils/Logger.js';
 import { Buffer } from 'buffer';
@@ -30,10 +35,11 @@ export const createOrder = async (req, res) => {
     } = req.body;
 
     if (!amount) {
-      return res.status(400).json({
-        success: false,
-        message: responseMessage.AMOUNT_REQUIRED,
-      });
+      return ResponseHandler(
+        res,
+        StatusCodes.BAD_REQUEST,
+        responseMessage.AMOUNT_REQUIRED
+      );
     }
 
     const order = await razorpay.orders.create({
@@ -57,19 +63,13 @@ export const createOrder = async (req, res) => {
       razorpayOrderId: order.id,
     });
 
-    res.status(201).json({
-      success: true,
-      data: {
-        order,
-        transactionId: transaction._id,
-      },
+    return ResponseHandler(res, StatusCodes.CREATED, responseMessage.SUCCESS, {
+      order,
+      transactionId: transaction._id,
     });
   } catch (error) {
     logger.error('Create Order Error:', error);
-    res.status(500).json({
-      success: false,
-      message: responseMessage.ORDER_CREATION_FAILED,
-    });
+    return CatchErrorHandler(res, error, responseMessage.ORDER_CREATION_FAILED);
   }
 };
 //#endregion
@@ -88,10 +88,11 @@ export const verifyPayment = async (req, res) => {
       .digest('hex');
 
     if (expectedSignature !== razorpay_signature) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid signature',
-      });
+      return ResponseHandler(
+        res,
+        StatusCodes.BAD_REQUEST,
+        responseMessage.PAYMENT_SIGNATURE_INVALID
+      );
     }
 
     await PaymentTransaction.findOneAndUpdate(
@@ -103,13 +104,14 @@ export const verifyPayment = async (req, res) => {
       }
     );
 
-    res.json({
-      success: true,
-      message: responseMessage.PAYMENT_VERIFIED,
-    });
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.PAYMENT_VERIFIED
+    );
   } catch (error) {
     logger.error('Verify Payment Error:', error);
-    res.status(500).json({ success: false });
+    return CatchErrorHandler(res, error);
   }
 };
 //#endregion
@@ -131,9 +133,11 @@ export const razorpayWebhook = async (req, res) => {
       .digest('hex');
 
     if (expectedSignature !== signature) {
-      return res
-        .status(400)
-        .json({ success: false, message: responseMessage.INVALID_SIGNATURE });
+      return ResponseHandler(
+        res,
+        StatusCodes.BAD_REQUEST,
+        responseMessage.INVALID_SIGNATURE
+      );
     }
 
     const data = JSON.parse(payloadBody.toString('utf8'));
@@ -146,16 +150,20 @@ export const razorpayWebhook = async (req, res) => {
     });
 
     if (!transaction) {
-      return res
-        .status(200)
-        .json({ status: responseMessage.TRANSACTION_NOT_FOUND });
+      return ResponseHandler(
+        res,
+        StatusCodes.OK,
+        responseMessage.TRANSACTION_NOT_FOUND
+      );
     }
 
     // ================= DUPLICATE WEBHOOK PROTECTION =================
     if (event === 'payment.captured' && transaction.status === 'success') {
-      return res
-        .status(200)
-        .json({ status: responseMessage.ALREADY_PROCESSED });
+      return ResponseHandler(
+        res,
+        StatusCodes.OK,
+        responseMessage.ALREADY_PROCESSED
+      );
     }
 
     // ================= PAYMENT SUCCESS =================
@@ -281,10 +289,10 @@ export const razorpayWebhook = async (req, res) => {
       await transaction.save();
     }
 
-    res.status(200).json({ status: 'ok' });
+    return ResponseHandler(res, StatusCodes.OK, 'Webhook received');
   } catch (error) {
     logger.error('Webhook Error:', error);
-    res.status(500).json({ success: false });
+    return CatchErrorHandler(res, error);
   }
 };
 //#endregion
@@ -304,17 +312,22 @@ export const getTransactions = async (req, res) => {
       createdAt: -1,
     });
 
-    res.json({
-      success: true,
-      count: transactions.length,
-      data: transactions,
-    });
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.TRANSACTION_FETCH_SUCCESS,
+      {
+        count: transactions.length,
+        data: transactions,
+      }
+    );
   } catch (error) {
     logger.error('Failed to fetch transactions:', error);
-    res.status(500).json({
-      success: false,
-      message: responseMessage.FAILED_TO_FETCH_TRANSACTION,
-    });
+    return CatchErrorHandler(
+      res,
+      error,
+      responseMessage.FAILED_TO_FETCH_TRANSACTION
+    );
   }
 };
 //#endregion

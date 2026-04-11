@@ -184,7 +184,11 @@ export const verifyOtpCommon = async (req, res) => {
     } else if (type === 'admin_email_change') {
       otpNamespace = 'admin_email_change';
     } else
-      return ResponseHandler(res, StatusCodes.BAD_REQUEST, 'Invalid OTP type');
+      return ResponseHandler(
+        res,
+        StatusCodes.BAD_REQUEST,
+        responseMessage.INVALID_OTP_TYPE
+      );
 
     const otpResult = await verifyOtp(otpNamespace, email, otp);
     if (!otpResult.success) {
@@ -816,7 +820,11 @@ export const sendOtp = async (req, res) => {
     } else if (type === 'admin_email_change') {
       otpNamespace = 'admin_email_change';
     } else
-      return ResponseHandler(res, StatusCodes.BAD_REQUEST, 'Invalid OTP type');
+      return ResponseHandler(
+        res,
+        StatusCodes.BAD_REQUEST,
+        responseMessage.INVALID_OTP_TYPE
+      );
 
     if (type === 'registration' && admin.isVerified) {
       return ResponseHandler(

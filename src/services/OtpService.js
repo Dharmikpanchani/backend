@@ -36,7 +36,7 @@ export const verifyOtp = async (type, identifier, inputOtp) => {
     const minutes = Math.ceil(ttl / 60);
     return {
       success: false,
-      message: `You are blocked due to too many failed attempts. Please try again after ${minutes} minute${minutes > 1 ? 's' : ''}.`,
+      message: `${responseMessage.OTP_BLOCKED} Please try again after ${minutes} minute${minutes > 1 ? 's' : ''}.`,
       maxAttemptsReached: true,
     };
   }
@@ -51,7 +51,7 @@ export const verifyOtp = async (type, identifier, inputOtp) => {
     if (attempts && parseInt(attempts) >= MAX_ATTEMPTS) {
       return {
         success: false,
-        message: 'Too many wrong OTP attempts. Please request a new OTP.',
+        message: `${responseMessage.TOO_MANY_OTP_ATTEMPTS} Please request a new OTP.`,
         maxAttemptsReached: true,
       };
     }
@@ -61,7 +61,7 @@ export const verifyOtp = async (type, identifier, inputOtp) => {
   if (storedOtp === inputOtp.toString()) {
     // OTP matched — delete from Redis
     await deleteOtp(type, identifier);
-    return { success: true, message: 'OTP verified successfully' };
+    return { success: true, message: responseMessage.OTP_VERIFIED };
   }
 
   // OTP didn't match — Increment attempt counter
@@ -72,7 +72,7 @@ export const verifyOtp = async (type, identifier, inputOtp) => {
     await deleteOtp(type, identifier, false);
     return {
       success: false,
-      message: 'Too many wrong OTP attempts. You are blocked for 15 minutes.',
+      message: `${responseMessage.TOO_MANY_OTP_ATTEMPTS} You are blocked for 15 minutes.`,
       maxAttemptsReached: true,
     };
   }
@@ -105,7 +105,7 @@ export const checkOtpRateLimit = async (type, identifier) => {
     const minutes = Math.ceil(ttl / 60);
     return {
       limited: true,
-      message: `You are blocked due to too many failed attempts. Please try again after ${minutes} minute${minutes > 1 ? 's' : ''}.`,
+      message: `${responseMessage.OTP_BLOCKED} Please try again after ${minutes} minute${minutes > 1 ? 's' : ''}.`,
     };
   }
 
@@ -116,7 +116,7 @@ export const checkOtpRateLimit = async (type, identifier) => {
     const minutes = Math.ceil(ttl / 60);
     return {
       limited: true,
-      message: `Too many OTP requests. Please wait ${minutes} minute${minutes > 1 ? 's' : ''}.`,
+      message: `${responseMessage.TOO_MANY_OTP_REQUESTS} Please wait ${minutes} minute${minutes > 1 ? 's' : ''}.`,
     };
   }
 
@@ -131,7 +131,7 @@ export const checkOtpRateLimit = async (type, identifier) => {
     await redis.setex(reqBlockKey, 300, '1'); // 5 minute block
     return {
       limited: true,
-      message: `Too many OTP requests. Please wait 5 minutes.`,
+      message: `${responseMessage.TOO_MANY_OTP_REQUESTS} Please wait 5 minutes.`,
     };
   }
 

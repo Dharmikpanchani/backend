@@ -751,7 +751,11 @@ export const sendOtp = async (req, res) => {
     } else if (type === 'developer_email_change') {
       otpType = 'developer_email_change';
     } else
-      return ResponseHandler(res, StatusCodes.BAD_REQUEST, 'Invalid OTP type');
+      return ResponseHandler(
+        res,
+        StatusCodes.BAD_REQUEST,
+        responseMessage.INVALID_OTP_TYPE
+      );
 
     if (type === 'registration' && developer?.isVerified) {
       return ResponseHandler(

@@ -750,7 +750,7 @@ export const updateSchoolTheme = async (req, res) => {
     return ResponseHandler(
       res,
       StatusCodes.OK,
-      'Theme updated successfully',
+      responseMessage.THEME_UPDATED_SUCCESSFULLY,
       updatedTheme
     );
   } catch (error) {

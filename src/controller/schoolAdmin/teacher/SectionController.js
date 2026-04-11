@@ -16,11 +16,10 @@ const logger = new Logger(
 //#region ➕ Add / ✏️ Edit Section
 export const addEditSection = async (req, res) => {
   try {
-    const { id, name, code, classId } = req.body;
+    const { id, code, classId } = req.body;
     const schoolId = req.school_id;
 
     const payload = {
-      name: name?.trim(),
       code: code?.trim(),
       classId,
       schoolId,
@@ -41,19 +40,24 @@ export const addEditSection = async (req, res) => {
         );
       }
 
-      const duplicate = await Section.findOne({
-        _id: { $ne: id },
-        classId: payload.classId,
-        $or: [{ code: payload.code }, { name: payload.name }],
-        ...req.schoolFilter,
-      });
+      const duplicateConditions = [];
+      if (payload.code) duplicateConditions.push({ code: payload.code });
 
-      if (duplicate) {
-        return ResponseHandler(
-          res,
-          StatusCodes.CONFLICT,
-          responseMessage.SECTION_ALREADY_EXISTS
-        );
+      if (duplicateConditions.length > 0) {
+        const duplicate = await Section.findOne({
+          _id: { $ne: id },
+          classId: payload.classId,
+          $or: duplicateConditions,
+          ...req.schoolFilter,
+        });
+
+        if (duplicate) {
+          return ResponseHandler(
+            res,
+            StatusCodes.CONFLICT,
+            responseMessage.SECTION_ALREADY_EXISTS
+          );
+        }
       }
 
       const result = await Section.findByIdAndUpdate(id, payload, {
@@ -68,38 +72,48 @@ export const addEditSection = async (req, res) => {
       );
     } else {
       // 🔹 Create flow
-      const duplicate = await Section.findOne({
-        classId: payload.classId,
-        $or: [{ code: payload.code }, { name: payload.name }],
-        ...req.schoolFilter,
-      });
+      const duplicateConditions = [];
+      if (payload.code) duplicateConditions.push({ code: payload.code });
 
-      if (duplicate) {
-        return ResponseHandler(
-          res,
-          StatusCodes.CONFLICT,
-          responseMessage.SECTION_ALREADY_EXISTS
-        );
+      if (duplicateConditions.length > 0) {
+        const duplicate = await Section.findOne({
+          classId: payload.classId,
+          $or: duplicateConditions,
+          ...req.schoolFilter,
+        });
+
+        if (duplicate) {
+          return ResponseHandler(
+            res,
+            StatusCodes.CONFLICT,
+            responseMessage.SECTION_ALREADY_EXISTS
+          );
+        }
+
+        // Check for soft-deleted one to restore
+        const deletedSection = await Section.findOne({
+          classId: payload.classId,
+          $or: duplicateConditions,
+          schoolId,
+          isDeleted: true,
+        });
+
+        if (deletedSection) {
+          const result = await Section.findByIdAndUpdate(
+            deletedSection._id,
+            { ...payload, isDeleted: false, isActive: true },
+            { new: true }
+          );
+          return ResponseHandler(
+            res,
+            StatusCodes.CREATED,
+            responseMessage.SECTION_ADDED,
+            result
+          );
+        }
       }
 
-      // Check for soft-deleted one to restore
-      const deletedSection = await Section.findOne({
-        classId: payload.classId,
-        $or: [{ code: payload.code }, { name: payload.name }],
-        schoolId,
-        isDeleted: true,
-      });
-
-      let result;
-      if (deletedSection) {
-        result = await Section.findByIdAndUpdate(
-          deletedSection._id,
-          { ...payload, isDeleted: false, isActive: true },
-          { new: true }
-        );
-      } else {
-        result = await Section.create(payload);
-      }
+      const result = await Section.create(payload);
 
       return ResponseHandler(
         res,
@@ -153,7 +167,7 @@ export const getSections = async (req, res) => {
       pageNumber: type ? 1 : pageNumber,
       perPageData: type ? Number.MAX_SAFE_INTEGER : perPageData,
       searchRequest,
-      searchableFields: ['name', 'code'],
+      searchableFields: ['code'],
       extraOrConditions,
       booleanFields: ['isActive'],
       sort: { createdAt: -1 },
@@ -199,13 +213,11 @@ export const deleteSection = async (req, res) => {
       );
     }
 
-    // ✅ Scramble the code/name to free the unique index slot if needed
+    // ✅ Scramble the code to free the unique index slot if needed
     const scrambledCode = `${data.code}_deleted_${Date.now()}`;
-    const scrambledName = `${data.name}_deleted_${Date.now()}`;
     await Section.findByIdAndUpdate(data._id, {
       isDeleted: true,
       code: scrambledCode,
-      name: scrambledName,
     });
 
     return ResponseHandler(
