@@ -231,7 +231,13 @@ const schoolRegisterSchema = joi.object({
     .required()
     .label('Board'),
   schoolType: joistring
-    .valid('Primary', 'Secondary', 'Higher Secondary', 'Junior College', 'Other')
+    .valid(
+      'Primary',
+      'Secondary',
+      'Higher Secondary',
+      'Junior College',
+      'Other'
+    )
     .required()
     .label('School Type'),
   medium: joistring

@@ -51,7 +51,13 @@ const SchoolSchema = new mongoose.Schema(
     },
     schoolType: {
       type: String,
-      enum: ['Primary', 'Secondary', 'Higher Secondary', 'Junior College', 'Other'],
+      enum: [
+        'Primary',
+        'Secondary',
+        'Higher Secondary',
+        'Junior College',
+        'Other',
+      ],
       required: true,
     },
     medium: {
