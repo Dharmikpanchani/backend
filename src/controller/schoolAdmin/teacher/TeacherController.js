@@ -72,7 +72,6 @@ export const createTeacher = async (req, res) => {
       );
     }
 
-
     // 🔥 Uniqueness check in central User model
     const existingUser = await User.findOne({
       $or: [
@@ -286,7 +285,6 @@ export const updateTeacher = async (req, res) => {
         responseMessage.INVALID_IFSC_CODE_FORMAT
       );
     }
-
 
     const teacher = await Teacher.findOne({ _id: id, schoolId });
     if (!teacher) {

@@ -136,7 +136,9 @@ export const getSubjects = async (req, res) => {
     }
 
     if (departmentIds) {
-      filters.departmentIds = { $in: Array.isArray(departmentIds) ? departmentIds : [departmentIds] };
+      filters.departmentIds = {
+        $in: Array.isArray(departmentIds) ? departmentIds : [departmentIds],
+      };
     }
 
     let extraOrConditions = [];
