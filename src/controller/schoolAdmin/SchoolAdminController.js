@@ -542,6 +542,21 @@ export const profile = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const { name, email, phoneNumber } = req.body;
+    const existingDuplicate = await Admin.findOne({
+      _id: { $ne: req.admin_id },
+      $or: [{ email }, { phoneNumber }],
+      schoolId: req.school_id,
+      isDeleted: false,
+    });
+
+    if (existingDuplicate) {
+      return ResponseHandler(
+        res,
+        StatusCodes.CONFLICT,
+        responseMessage.ADMIN_ALREADY_EXISTS
+      );
+    }
+
     const update = await Admin.findOneAndUpdate(
       { _id: req.admin_id },
       {
@@ -589,6 +604,7 @@ export const changeEmailRequest = async (req, res) => {
 
     const emailExists = await Admin.findOne({
       email: newEmail,
+      schoolId: admin.schoolId,
       isDeleted: false,
     });
     if (emailExists) {

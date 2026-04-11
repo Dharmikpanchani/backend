@@ -68,7 +68,8 @@ export const addEditAdminProfile = async (req, res) => {
 
       const duplicateAdmin = await Admin.findOne({
         _id: { $ne: id },
-        $or: [{ email }],
+        email,
+        schoolId: null,
         isDeleted: false,
       });
       if (duplicateAdmin)

@@ -245,7 +245,7 @@ adminRoutes.delete(
     },
     {
       model: Subject,
-      field: 'departmentId',
+      field: 'departmentIds',
       message: responseMessage.DEPARTMENT_IN_USE_DELETE,
     },
   ]),
@@ -264,7 +264,7 @@ adminRoutes.post(
     },
     {
       model: Subject,
-      field: 'departmentId',
+      field: 'departmentIds',
       message: responseMessage.DEPARTMENT_IN_USE_STATUS,
     },
   ]),
@@ -300,7 +300,7 @@ adminRoutes.delete(
   checkRecordInUse([
     {
       model: Teacher,
-      field: 'subjectIds',
+      field: 'subjects',
       message: responseMessage.SUBJECT_IN_USE_DELETE,
     },
   ]),
@@ -314,7 +314,7 @@ adminRoutes.post(
   checkRecordInUse([
     {
       model: Teacher,
-      field: 'subjectIds',
+      field: 'subjects',
       message: responseMessage.SUBJECT_IN_USE_STATUS,
     },
   ]),
@@ -355,7 +355,7 @@ adminRoutes.delete(
     },
     {
       model: Teacher,
-      field: 'classIds',
+      field: 'classesAssigned',
       message: responseMessage.CLASS_IN_USE_DELETE,
     },
   ]),
@@ -374,7 +374,7 @@ adminRoutes.post(
     },
     {
       model: Teacher,
-      field: 'classIds',
+      field: 'classesAssigned',
       message: responseMessage.CLASS_IN_USE_STATUS,
     },
   ]),
@@ -410,7 +410,7 @@ adminRoutes.delete(
   checkRecordInUse([
     {
       model: Teacher,
-      field: 'sectionId',
+      field: 'sectionsAssigned',
       message: responseMessage.SECTION_IN_USE_DELETE,
     },
   ]),
@@ -424,7 +424,7 @@ adminRoutes.post(
   checkRecordInUse([
     {
       model: Teacher,
-      field: 'sectionId',
+      field: 'sectionsAssigned',
       message: responseMessage.SECTION_IN_USE_STATUS,
     },
   ]),

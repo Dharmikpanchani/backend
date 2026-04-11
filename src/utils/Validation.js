@@ -309,7 +309,13 @@ const schoolUpdateProfileSchema = joi.object({
     .label('Board'),
   schoolType: joistring
     .optional()
-    .valid('Private', 'Government', 'Trust', 'Other')
+    .valid(
+      'Primary',
+      'Secondary',
+      'Higher Secondary',
+      'Junior College',
+      'Other'
+    )
     .label('School Type'),
   medium: joistring
     .optional()
