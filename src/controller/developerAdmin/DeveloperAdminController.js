@@ -12,6 +12,7 @@ import Logger from '../../utils/Logger.js';
 import {
   // generateOtp,
   storeOtp,
+  verifyOtp,
   checkOtpRateLimit,
 } from '../../services/OtpService.js';
 import School from '../../models/school/School.js';
@@ -33,6 +34,7 @@ export const addEditAdminProfile = async (req, res) => {
       address,
       phoneNumber,
       isReferralAdmin,
+      otp,
     } = req?.body || {};
 
     const payload = {
@@ -75,6 +77,38 @@ export const addEditAdminProfile = async (req, res) => {
           StatusCodes.CONFLICT,
           responseMessage.ADMIN_ALREADY_EXISTS
         );
+
+      if (!otp) {
+        const rateLimit = await checkOtpRateLimit('admin_update', req.developer.email);
+        if (rateLimit.limited)
+          return ResponseHandler(
+            res,
+            StatusCodes.TOO_MANY_REQUESTS,
+            rateLimit.message
+          );
+
+        // const otpCode = generateOtp();
+        const otpCode = 444444;
+        await storeOtp('admin_update', req.developer.email, otpCode);
+        sendRegisterVerificationEmail(
+          `Your Admin Update Verification OTP is: ${otpCode}`,
+          req.developer.email,
+          'Admin',
+          'Profile Update'
+        ).catch((err) =>
+          logger.error(`Error sending Admin Update OTP: ${err}`)
+        );
+
+        return ResponseHandler(res, StatusCodes.OK, 'OTP sent to your email', {
+          requireOtp: true,
+          email: req.developer.email,
+        });
+      }
+
+      const otpResult = await verifyOtp('admin_update', req.developer.email, otp);
+      if (!otpResult.success) {
+        return ResponseHandler(res, StatusCodes.BAD_REQUEST, otpResult.message);
+      }
 
       result = await Admin.findByIdAndUpdate(id, payload, {
         new: true,

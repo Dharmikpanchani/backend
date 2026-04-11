@@ -748,8 +748,8 @@ export const sendOtp = async (req, res) => {
       otpType = 'developer';
     } else if (type === 'forgotPassword') {
       otpType = 'developer_forgot';
-    } else if (type === 'developer_email_change') {
-      otpType = 'developer_email_change';
+    } else if (type === 'developer_email_change' || type === 'admin_update') {
+      otpType = type;
     } else
       return ResponseHandler(
         res,
@@ -794,6 +794,13 @@ export const sendOtp = async (req, res) => {
           'Login'
         );
       }
+    } else if (type === 'admin_update') {
+      sendRegisterVerificationEmail(
+        `Your Admin Update Verification OTP is: ${otp}`,
+        email,
+        'Admin',
+        'Profile Update'
+      ).catch((err) => logger.error(err));
     } else if (type === 'registration') {
       sendRegisterVerificationEmail(
         `Your Admin Register OTP is: ${otp}`,
