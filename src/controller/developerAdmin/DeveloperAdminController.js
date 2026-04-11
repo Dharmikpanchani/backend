@@ -79,7 +79,10 @@ export const addEditAdminProfile = async (req, res) => {
         );
 
       if (!otp) {
-        const rateLimit = await checkOtpRateLimit('admin_update', req.developer.email);
+        const rateLimit = await checkOtpRateLimit(
+          'admin_update',
+          req.developer.email
+        );
         if (rateLimit.limited)
           return ResponseHandler(
             res,
@@ -105,7 +108,11 @@ export const addEditAdminProfile = async (req, res) => {
         });
       }
 
-      const otpResult = await verifyOtp('admin_update', req.developer.email, otp);
+      const otpResult = await verifyOtp(
+        'admin_update',
+        req.developer.email,
+        otp
+      );
       if (!otpResult.success) {
         return ResponseHandler(res, StatusCodes.BAD_REQUEST, otpResult.message);
       }
