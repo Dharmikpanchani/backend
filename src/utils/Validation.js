@@ -227,11 +227,11 @@ const schoolRegisterSchema = joi.object({
   city: joistring.required().label('City'),
   zipCode: joistring.required().label('Zip Code'),
   board: joistring
-    .valid('CBSE', 'GSEB', 'ICSE', 'IB', 'Other')
+    .valid('CBSE', 'GSEB', 'ICSE', 'IB', 'State Board', 'IGCSE', 'Other')
     .required()
     .label('Board'),
   schoolType: joistring
-    .valid('Private', 'Government', 'Trust', 'Other')
+    .valid('Primary', 'Secondary', 'Higher Secondary', 'Junior College', 'Other')
     .required()
     .label('School Type'),
   medium: joistring
