@@ -1,4 +1,5 @@
 import User from '../../models/user/User.js';
+import Teacher from '../../models/teacher/Teacher.js';
 import { responseMessage } from '../../utils/ResponseMessage.js';
 import {
   ResponseHandler,
@@ -221,7 +222,14 @@ export const verifyLoginOtp = async (req, res) => {
 
     setRefreshTokenCookie(res, refreshToken);
     user.isLogin = true;
+    user.lastLogin = new Date();
     await user.save();
+
+    if (user.userType === 'teacher' && user.teacherId) {
+      await Teacher.findByIdAndUpdate(user.teacherId, {
+        lastLogin: new Date(),
+      });
+    }
 
     const userData = user.toObject();
     delete userData.password;

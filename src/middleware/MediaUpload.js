@@ -52,6 +52,11 @@ const fieldsArray = [
   { name: 'pdfUrl', maxCount: 1 },
   { name: 'multipleImageUrl', maxCount: 10 },
   { name: 'bluePrintpdfUrl', maxCount: 20 },
+  { name: 'profileImage', maxCount: 1 },
+  { name: 'resume', maxCount: 1 },
+  { name: 'idProof', maxCount: 1 },
+  { name: 'educationCertificates', maxCount: 10 },
+  { name: 'experienceCertificates', maxCount: 10 },
 ];
 
 //#region Main Middleware Factory
@@ -74,6 +79,8 @@ export const MediaUpload = () => {
       const uploadedFiles = req.files || {};
       req.multipleImageUrl = [];
       req.bluePrintpdfUrlArray = [];
+      req.educationCertificates = [];
+      req.experienceCertificates = [];
 
       for (const fieldName in uploadedFiles) {
         const files = uploadedFiles[fieldName];
@@ -116,6 +123,21 @@ export const MediaUpload = () => {
               break;
             case 'bluePrintpdfUrl':
               req.bluePrintpdfUrlArray.push(file.filename);
+              break;
+            case 'profileImage':
+              req.profileImage = file.filename;
+              break;
+            case 'resume':
+              req.resume = file.filename;
+              break;
+            case 'idProof':
+              req.idProof = file.filename;
+              break;
+            case 'educationCertificates':
+              req.educationCertificates.push(file.filename);
+              break;
+            case 'experienceCertificates':
+              req.experienceCertificates.push(file.filename);
               break;
             default:
               break;

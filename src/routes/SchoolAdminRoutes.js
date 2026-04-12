@@ -434,37 +434,48 @@ adminRoutes.post(
 
 //#region Teacher Module
 adminRoutes.post(
-  '/teachers',
+  '/add-edit-teacher',
   adminAuth,
   schoolScope,
   checkPermission(schoolAdminPermission.teacher.create),
-  TeacherController.createTeacher
+  MediaUpload(),
+  TeacherController.addEditTeacher
+);
+adminRoutes.post(
+  '/add-edit-teacher/:id',
+  adminAuth,
+  schoolScope,
+  checkPermission(schoolAdminPermission.teacher.update),
+  MediaUpload(),
+  TeacherController.addEditTeacher
 );
 adminRoutes.get(
-  '/teachers',
+  '/get-all-teachers',
   adminAuth,
   schoolScope,
   checkPermission(schoolAdminPermission.teacher.read),
   TeacherController.getTeachers
 );
-adminRoutes.put(
-  '/teachers/:id',
+adminRoutes.get(
+  '/get-teacher/:id',
   adminAuth,
   schoolScope,
-  checkPermission(schoolAdminPermission.teacher.update),
-  TeacherController.updateTeacher
+  checkPermission(schoolAdminPermission.teacher.read),
+  TeacherController.getTeacherById
 );
 adminRoutes.delete(
-  '/teachers/:id',
+  '/delete-teacher/:id',
   adminAuth,
   schoolScope,
   checkPermission(schoolAdminPermission.teacher.delete),
   TeacherController.deleteTeacher
 );
 adminRoutes.post(
-  '/teachers/verify-otp',
+  '/teacher-action-status/:id',
+  adminAuth,
   schoolScope,
-  TeacherController.verifyTeacherOtp
+  checkPermission(schoolAdminPermission.teacher.status),
+  TeacherController.teacherStatusHandler
 );
 //#endregion
 

@@ -1,4 +1,7 @@
 import SchoolTheme from '../../models/school/SchoolTheme.js';
+import Teacher from '../../models/teacher/Teacher.js';
+import User from '../../models/user/User.js';
+import * as SmsService from '../../services/SmsService.js';
 import Admin from '../../models/common/Admin.js';
 import { responseMessage } from '../../utils/ResponseMessage.js';
 import {
@@ -157,47 +160,64 @@ export const verifyOtpCommon = async (req, res) => {
   try {
     const { email, otp, type } = req.body;
 
-    const admin = await Admin.findOne({
-      email,
-      isDeleted: false,
-      type: config.SCHOOL_ADMIN,
-      schoolId: req.school_id,
-    })
-      .populate('role')
-      .populate('schoolId');
+    let targetRecord;
+    let otpNamespace = '';
 
-    if (!admin) {
+    if (type === 'teacher') {
+      targetRecord = await Teacher.findOne({
+        phoneNumber: email,
+        schoolId: req.school_id,
+        isDeleted: false,
+      });
+      otpNamespace = 'teacher';
+    } else {
+      targetRecord = await Admin.findOne({
+        email,
+        isDeleted: false,
+        type: config.SCHOOL_ADMIN,
+        schoolId: req.school_id,
+      })
+        .populate('role')
+        .populate('schoolId');
+
+      if (type === 'login') {
+        otpNamespace = targetRecord?.isVerified ? 'admin_login' : 'admin';
+      } else if (type === 'registration') {
+        otpNamespace = 'admin';
+      } else if (type === 'forgotPassword') {
+        otpNamespace = 'admin_forgot';
+      } else if (type === 'admin_email_change') {
+        otpNamespace = 'admin_email_change';
+      }
+    }
+
+    if (!targetRecord) {
       return ResponseHandler(
         res,
         StatusCodes.NOT_FOUND,
-        responseMessage.ADMIN_NOT_FOUND
+        type === 'teacher'
+          ? responseMessage.TEACHER_NOT_FOUND
+          : responseMessage.ADMIN_NOT_FOUND
       );
     }
 
-    let otpNamespace = '';
-    if (type === 'login') {
-      otpNamespace = admin.isVerified ? 'admin_login' : 'admin';
-    } else if (type === 'registration') {
-      otpNamespace = 'admin';
-    } else if (type === 'forgotPassword') {
-      otpNamespace = 'admin_forgot';
-    } else if (type === 'admin_email_change') {
-      otpNamespace = 'admin_email_change';
-    } else
+    if (!otpNamespace) {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
         responseMessage.INVALID_OTP_TYPE
       );
+    }
 
     const otpResult = await verifyOtp(otpNamespace, email, otp);
     if (!otpResult.success) {
       if (
+        type !== 'teacher' &&
         (type === 'registration' || type === 'login') &&
         otpResult.maxAttemptsReached &&
-        !admin.isVerified
+        !targetRecord.isVerified
       ) {
-        await Admin.deleteOne({ _id: admin._id });
+        await Admin.deleteOne({ _id: targetRecord._id });
         return ResponseHandler(
           res,
           StatusCodes.BAD_REQUEST,
@@ -208,11 +228,11 @@ export const verifyOtpCommon = async (req, res) => {
     }
 
     if (type === 'login') {
-      if (!admin.isVerified) {
-        admin.isVerified = true;
-        admin.isActive = true;
+      if (!targetRecord.isVerified) {
+        targetRecord.isVerified = true;
+        targetRecord.isActive = true;
 
-        if (admin.isSuperAdmin) {
+        if (targetRecord.isSuperAdmin) {
           const school = req.school;
           if (school && !school.isVerified) {
             school.isVerified = true;
@@ -220,23 +240,25 @@ export const verifyOtpCommon = async (req, res) => {
           }
         }
       }
-      const payload = { id: admin._id, type: 'admin' };
+      const payload = { id: targetRecord._id, type: 'admin' };
       const accessToken = generateAccessToken(payload);
       const refreshToken = generateRefreshToken(payload);
 
       setRefreshTokenCookie(res, refreshToken);
-      admin.isLogin = true;
-      await admin.save();
+      targetRecord.isLogin = true;
+      await targetRecord.save();
 
-      const adminData = admin.toObject();
+      const adminData = targetRecord.toObject();
       delete adminData.password;
 
       // Ensure schoolId is fully populated
-      let schoolData = admin.schoolId;
+      let schoolData = targetRecord.schoolId;
       if (schoolData && typeof schoolData.toObject === 'function') {
         schoolData = schoolData.toObject();
       }
-      const theme = await SchoolTheme.findOne({ schoolId: admin.schoolId });
+      const theme = await SchoolTheme.findOne({
+        schoolId: targetRecord.schoolId,
+      });
 
       return ResponseHandler(
         res,
@@ -249,11 +271,11 @@ export const verifyOtpCommon = async (req, res) => {
         }
       );
     } else if (type === 'registration') {
-      admin.isVerified = true;
-      admin.isActive = true;
-      await admin.save();
+      targetRecord.isVerified = true;
+      targetRecord.isActive = true;
+      await targetRecord.save();
 
-      if (admin.isSuperAdmin) {
+      if (targetRecord.isSuperAdmin) {
         const school = req.school;
         if (school && !school.isVerified) {
           school.isVerified = true;
@@ -270,6 +292,35 @@ export const verifyOtpCommon = async (req, res) => {
       return ResponseHandler(res, StatusCodes.OK, responseMessage.OTP_VERIFIED);
     } else if (type === 'admin_email_change') {
       return ResponseHandler(res, StatusCodes.OK, responseMessage.OTP_VERIFIED);
+    } else if (type === 'teacher') {
+      const teacher = await Teacher.findOne({
+        phoneNumber: email, // passed as email field
+        schoolId: req.school_id,
+        isDeleted: false,
+      });
+
+      if (!teacher) {
+        return ResponseHandler(
+          res,
+          StatusCodes.NOT_FOUND,
+          responseMessage.TEACHER_NOT_FOUND
+        );
+      }
+
+      teacher.isVerified = true;
+      teacher.isActive = true;
+      await teacher.save();
+
+      await User.findOneAndUpdate(
+        { teacherId: teacher._id },
+        { isVerified: true, isActive: true }
+      );
+
+      return ResponseHandler(
+        res,
+        StatusCodes.OK,
+        responseMessage.TEACHER_VERIFIED
+      );
     }
   } catch (error) {
     logger.error(error);
@@ -812,37 +863,53 @@ export const sendOtp = async (req, res) => {
   try {
     const { email, type } = req.body;
 
-    const admin = await Admin.findOne({
-      email,
-      isDeleted: false,
-      schoolId: req.school_id,
-    });
+    let targetRecord;
+    let otpNamespace = '';
 
-    if (!admin) {
+    if (type === 'teacher') {
+      targetRecord = await Teacher.findOne({
+        phoneNumber: email,
+        isDeleted: false,
+        schoolId: req.school_id,
+      });
+      otpNamespace = 'teacher';
+    } else {
+      targetRecord = await Admin.findOne({
+        email,
+        isDeleted: false,
+        schoolId: req.school_id,
+      });
+
+      if (type === 'login') {
+        otpNamespace = targetRecord?.isVerified ? 'admin_login' : 'admin';
+      } else if (type === 'registration') {
+        otpNamespace = 'admin';
+      } else if (type === 'forgotPassword') {
+        otpNamespace = 'admin_forgot';
+      } else if (type === 'admin_email_change') {
+        otpNamespace = 'admin_email_change';
+      }
+    }
+
+    if (!targetRecord) {
       return ResponseHandler(
         res,
         StatusCodes.NOT_FOUND,
-        responseMessage.ADMIN_NOT_FOUND
+        type === 'teacher'
+          ? responseMessage.TEACHER_NOT_FOUND
+          : responseMessage.ADMIN_NOT_FOUND
       );
     }
 
-    let otpNamespace = '';
-    if (type === 'login') {
-      otpNamespace = admin.isVerified ? 'admin_login' : 'admin';
-    } else if (type === 'registration') {
-      otpNamespace = 'admin';
-    } else if (type === 'forgotPassword') {
-      otpNamespace = 'admin_forgot';
-    } else if (type === 'admin_email_change') {
-      otpNamespace = 'admin_email_change';
-    } else
+    if (!otpNamespace) {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
         responseMessage.INVALID_OTP_TYPE
       );
+    }
 
-    if (type === 'registration' && admin.isVerified) {
+    if (type === 'registration' && targetRecord.isVerified) {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
@@ -864,7 +931,7 @@ export const sendOtp = async (req, res) => {
     await storeOtp(otpNamespace, email, otp);
 
     if (type === 'login') {
-      if (!admin.isVerified) {
+      if (!targetRecord.isVerified) {
         sendRegisterVerificationEmail(
           `Your Admin Register OTP is: ${otp}`,
           email,
@@ -890,6 +957,8 @@ export const sendOtp = async (req, res) => {
         'Admin',
         'Email Change Request'
       );
+    } else if (type === 'teacher') {
+      await SmsService.sendSms(email, `Your verification code: ${otp}`);
     }
 
     return ResponseHandler(

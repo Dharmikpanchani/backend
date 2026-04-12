@@ -214,6 +214,9 @@ export const responseMessage = {
   TEACHER_VERIFIED: 'Teacher verified and activated successfully.',
   TEACHER_ALREADY_EXISTS:
     'User with this email or phone already exists in this school.',
+  TEACHER_EMAIL_ALREADY_EXISTS: 'Teacher with this email already exists.',
+  TEACHER_PHONE_ALREADY_EXISTS:
+    'Teacher with this phone number already exists.',
   ANOTHER_TEACHER_ALREADY_EXISTS:
     'Another user with this email or phone already exists.',
   ATTENDANCE_ID_ALREADY_EXISTS: 'Attendance ID is already in use.',
