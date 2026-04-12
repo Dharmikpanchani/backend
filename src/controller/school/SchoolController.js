@@ -21,8 +21,8 @@ import config from '../../config/Index.js';
 
 const logger = new Logger('./src/controller/school/SchoolController.js');
 
-//#region school Registration (with optional Referral)
-export const schoolRegister = async (req, res) => {
+//#region ➕ Add / ✏️ Edit School Profile
+export const addEditSchool = async (req, res) => {
   try {
     const {
       id,
@@ -58,7 +58,7 @@ export const schoolRegister = async (req, res) => {
         return ResponseHandler(
           res,
           StatusCodes.NOT_FOUND,
-          responseMessage.SCHOOL_NOT_FOUND_1
+          responseMessage.SCHOOL_NOT_FOUND
         );
       }
 
@@ -101,6 +101,7 @@ export const schoolRegister = async (req, res) => {
       const updateData = {
         schoolName,
         ownerName,
+        phoneNumber,
         address,
         city,
         state,
@@ -120,6 +121,8 @@ export const schoolRegister = async (req, res) => {
       if (password) {
         updateData.password = await encryptPassword(password);
       }
+
+      // Handle File Uploads from MediaUpload middleware
       if (req.logo) updateData.logo = req.logo;
       if (req.banner) updateData.banner = req.banner;
       if (req.affiliationCertificate)
@@ -132,12 +135,12 @@ export const schoolRegister = async (req, res) => {
       return ResponseHandler(
         res,
         StatusCodes.OK,
-        responseMessage.PROFILE_UPDATED,
+        responseMessage.SCHOOL_UPDATED_SUCCESSFULLY,
         updatedSchool
       );
     } else {
       // 🆕 CREATE FLOW
-      // 1. Check if school exists
+      // 1. Check for duplicates
       const existingSchool = await School.findOne({
         $or: [{ email }, { phoneNumber }, { schoolCode }],
         isDeleted: false,
@@ -225,7 +228,6 @@ export const schoolRegister = async (req, res) => {
       });
 
       // 8. OTP for Admin
-      // const otp = await generateOtp();
       const otp = 444444;
       await storeOtp('admin', newAdmin.email, otp);
 
@@ -253,7 +255,7 @@ export const schoolRegister = async (req, res) => {
 };
 //#endregion
 
-//#region Profile GET/UPDATE
+//#region Profile GET/UPDATE (for School Admin Portal)
 export const getProfile = async (req, res) => {
   try {
     const school = await School.findById(req.school_id);
@@ -261,11 +263,12 @@ export const getProfile = async (req, res) => {
       return ResponseHandler(
         res,
         StatusCodes.NOT_FOUND,
-        responseMessage.SCHOOL_NOT_FOUND_1
+        responseMessage.SCHOOL_NOT_FOUND
       );
     }
 
     const responseData = {
+      id: school._id,
       schoolName: school.schoolName,
       ownerName: school.ownerName,
       phoneNumber: school.phoneNumber,
@@ -322,9 +325,6 @@ export const updateProfile = async (req, res) => {
       panNumber,
       latitude,
       longitude,
-      logo,
-      banner,
-      affiliationCertificate,
     } = req.body;
     const schoolId = req.school_id;
 
@@ -333,7 +333,7 @@ export const updateProfile = async (req, res) => {
       return ResponseHandler(
         res,
         StatusCodes.NOT_FOUND,
-        responseMessage.SCHOOL_NOT_FOUND_1
+        responseMessage.SCHOOL_NOT_FOUND
       );
     }
 
@@ -371,24 +371,17 @@ export const updateProfile = async (req, res) => {
 
     // Handle File Uploads
     if (req.logo) school.logo = req.logo;
-    else if (logo !== undefined) school.logo = logo;
-
     if (req.banner) school.banner = req.banner;
-    else if (banner !== undefined) school.banner = banner;
-
     if (req.affiliationCertificate)
       school.affiliationCertificate = req.affiliationCertificate;
-    else if (affiliationCertificate !== undefined)
-      school.affiliationCertificate = affiliationCertificate;
 
     await school.save();
 
-    const updated = await School.findById(schoolId);
     return ResponseHandler(
       res,
       StatusCodes.OK,
       responseMessage.SCHOOL_UPDATED_SUCCESSFULLY,
-      updated
+      school
     );
   } catch (error) {
     logger.error(`Update Profile error: ${error}`);
@@ -397,7 +390,7 @@ export const updateProfile = async (req, res) => {
 };
 //#endregion
 
-//#region get all Schools
+//#region get all Schools (for Developer Portal)
 export const getAllSchools = async (req, res) => {
   try {
     const {
@@ -512,16 +505,16 @@ export const getAllSchools = async (req, res) => {
 };
 //#endregion
 
-//#region get school by id
+//#region get school by id (for Developer Portal)
 export const getSchoolById = async (req, res) => {
   try {
     const { schoolId } = req.params;
-    const data = await School.findById({ _id: schoolId });
+    const data = await School.findOne({ _id: schoolId, isDeleted: false });
     if (!data) {
       return ResponseHandler(
         res,
         StatusCodes.NOT_FOUND,
-        responseMessage.SCHOOL_NOT_FOUND_1
+        responseMessage.SCHOOL_NOT_FOUND
       );
     }
     return ResponseHandler(
@@ -536,108 +529,6 @@ export const getSchoolById = async (req, res) => {
   }
 };
 //#endregion
-
-//#region update school by id
-export const updateSchoolById = async (req, res) => {
-  try {
-    const { schoolId } = req.params;
-    const {
-      schoolName,
-      ownerName,
-      phoneNumber,
-      address,
-      city,
-      state,
-      zipCode,
-      country,
-      board,
-      schoolType,
-      medium,
-      establishedYear,
-      registrationNumber,
-      gstNumber,
-      panNumber,
-      latitude,
-      longitude,
-      logo,
-      banner,
-      affiliationCertificate,
-    } = req.body;
-
-    // 1. Find school (correct way)
-    const school = await School.findOne({
-      _id: schoolId,
-      isDeleted: false,
-    });
-
-    if (!school) {
-      return ResponseHandler(
-        res,
-        StatusCodes.NOT_FOUND,
-        responseMessage.SCHOOL_NOT_FOUND
-      );
-    }
-
-    if (phoneNumber && phoneNumber !== school.phoneNumber) {
-      const existingPhone = await School.findOne({
-        phoneNumber,
-        _id: { $ne: schoolId },
-      });
-
-      if (existingPhone) {
-        return ResponseHandler(
-          res,
-          StatusCodes.CONFLICT,
-          responseMessage.PHONE_NUMBER_ALREADY_EXISTS
-        );
-      }
-    }
-
-    // 3. Update only if value exists (safe update)
-    school.schoolName = schoolName ?? school.schoolName;
-    school.ownerName = ownerName ?? school.ownerName;
-    school.phoneNumber = phoneNumber ?? school.phoneNumber;
-    school.address = address ?? school.address;
-    school.city = city ?? school.city;
-    school.state = state ?? school.state;
-    school.zipCode = zipCode ?? school.zipCode;
-    school.country = country ?? school.country;
-    school.board = board ?? school.board;
-    school.schoolType = schoolType ?? school.schoolType;
-    school.medium = medium ?? school.medium;
-    school.establishedYear = establishedYear ?? school.establishedYear;
-    school.registrationNumber = registrationNumber ?? school.registrationNumber;
-    school.gstNumber = gstNumber ?? school.gstNumber;
-    school.panNumber = panNumber ?? school.panNumber;
-    school.latitude = latitude ?? school.latitude;
-    school.longitude = longitude ?? school.longitude;
-
-    // Handle File Uploads
-    if (req.logo) school.logo = req.logo;
-    else if (logo !== undefined) school.logo = logo;
-
-    if (req.banner) school.banner = req.banner;
-    else if (banner !== undefined) school.banner = banner;
-
-    if (req.affiliationCertificate)
-      school.affiliationCertificate = req.affiliationCertificate;
-    else if (affiliationCertificate !== undefined)
-      school.affiliationCertificate = affiliationCertificate;
-
-    // 4. Save
-    await school.save();
-
-    return ResponseHandler(
-      res,
-      StatusCodes.OK,
-      responseMessage.SCHOOL_UPDATED_SUCCESSFULLY,
-      school
-    );
-  } catch (error) {
-    logger.error(`Update School By Id error: ${error}`);
-    return CatchErrorHandler(res, error);
-  }
-};
 
 //#region get school image by code
 export const getSchoolImageByCode = async (req, res) => {

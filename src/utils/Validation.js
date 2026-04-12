@@ -305,7 +305,7 @@ const schoolUpdateProfileSchema = joi.object({
   country: joistring.optional().allow('').label('Country'),
   board: joistring
     .optional()
-    .valid('CBSE', 'GSEB', 'ICSE', 'IB', 'Other')
+    .valid('CBSE', 'GSEB', 'ICSE', 'IB', 'State Board', 'IGCSE', 'Other')
     .label('Board'),
   schoolType: joistring
     .optional()

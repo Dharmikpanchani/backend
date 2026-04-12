@@ -128,7 +128,7 @@ export const MediaUpload = () => {
               req.profileImage = file.filename;
               break;
             case 'resume':
-              req.resume = file.filename;
+              req.resumeFile = file.filename;
               break;
             case 'idProof':
               req.idProof = file.filename;

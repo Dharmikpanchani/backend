@@ -64,26 +64,28 @@ export const addEditTeacher = async (req, res) => {
     const schoolId = req.school_id;
     const adminId = req.admin_id;
 
-    // ✅ Handle Files from MediaUpload middleware
+    // ✅ Handle Files from MediaUpload middleware - Merge new uploads with existing paths
     const finalProfileImage = req.profileImage || profileImage;
-    const finalResume = req.resume || resume;
+    const finalResume = req.resumeFile || resume;
     const finalIdProof = req.idProof || idProof;
-    const finalEducationCertificates =
-      req.educationCertificates?.length > 0
-        ? req.educationCertificates
-        : Array.isArray(educationCertificates)
-          ? educationCertificates
-          : educationCertificates
-            ? [educationCertificates]
-            : [];
-    const finalExperienceCertificates =
-      req.experienceCertificates?.length > 0
-        ? req.experienceCertificates
-        : Array.isArray(experienceCertificates)
-          ? experienceCertificates
-          : experienceCertificates
-            ? [experienceCertificates]
-            : [];
+
+    const normalizeFileArray = (newFiles, existingFiles) => {
+      const existing = Array.isArray(existingFiles)
+        ? existingFiles
+        : existingFiles
+          ? [existingFiles]
+          : [];
+      return [...(newFiles || []), ...existing];
+    };
+
+    const finalEducationCertificates = normalizeFileArray(
+      req.educationCertificates,
+      educationCertificates
+    );
+    const finalExperienceCertificates = normalizeFileArray(
+      req.experienceCertificates,
+      experienceCertificates
+    );
 
     // ✅ Normalize Array Fields
     const normalizeArray = (val, altKey) => {
@@ -155,50 +157,56 @@ export const addEditTeacher = async (req, res) => {
         { email, phoneNumber, attendanceId }
       );
 
-      // 2. Update Teacher profile
+      // 2. Update Teacher profile - Build update object dynamically to preserve existing files
+      const updateData = {
+        fullName,
+        gender,
+        dateOfBirth,
+        bloodGroup,
+        email,
+        phoneNumber,
+        alternatePhoneNumber,
+        address,
+        city,
+        state,
+        country,
+        pincode,
+        joiningDate,
+        experienceYears,
+        qualification,
+        specialization,
+        designation,
+        departmentId,
+        subjects: finalSubjects,
+        classesAssigned: finalClasses,
+        sectionsAssigned: finalSections,
+        employmentType,
+        salary,
+        salaryType,
+        bankName,
+        accountNumber,
+        ifscCode,
+        panNumber,
+        aadharNumber,
+        attendanceId,
+        leaveBalance,
+        workingHours,
+        shiftTiming,
+        updatedBy: adminId,
+      };
+
+      // Only update file fields if we have a value (new file or existing string)
+      if (finalProfileImage) updateData.profileImage = finalProfileImage;
+      if (finalResume) updateData.resume = finalResume;
+      if (finalIdProof) updateData.idProof = finalIdProof;
+      if (finalEducationCertificates.length > 0)
+        updateData.educationCertificates = finalEducationCertificates;
+      if (finalExperienceCertificates.length > 0)
+        updateData.experienceCertificates = finalExperienceCertificates;
+
       result = await Teacher.findOneAndUpdate(
         { _id: id, schoolId },
-        {
-          fullName,
-          gender,
-          dateOfBirth,
-          profileImage: finalProfileImage,
-          bloodGroup,
-          email,
-          phoneNumber,
-          alternatePhoneNumber,
-          address,
-          city,
-          state,
-          country,
-          pincode,
-          joiningDate,
-          experienceYears,
-          qualification,
-          specialization,
-          designation,
-          departmentId,
-          subjects: finalSubjects,
-          classesAssigned: finalClasses,
-          sectionsAssigned: finalSections,
-          employmentType,
-          salary,
-          salaryType,
-          bankName,
-          accountNumber,
-          ifscCode,
-          panNumber,
-          aadharNumber,
-          resume: finalResume,
-          idProof: finalIdProof,
-          educationCertificates: finalEducationCertificates,
-          experienceCertificates: finalExperienceCertificates,
-          attendanceId,
-          leaveBalance,
-          workingHours,
-          shiftTiming,
-          updatedBy: adminId,
-        },
+        updateData,
         { new: true }
       );
 

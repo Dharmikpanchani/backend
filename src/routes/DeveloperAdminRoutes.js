@@ -156,12 +156,12 @@ developerRoutes.delete(
 
 //#region School CRUD Management
 developerRoutes.post(
-  '/schoolRegister',
+  '/add-edit-school',
   developerAuth,
   checkPermission(developerRolePermissionList.school.create),
   MediaUpload(),
   validator('schoolRegisterSchema'),
-  SchoolController.schoolRegister
+  SchoolController.addEditSchool
 );
 
 developerRoutes.get(
@@ -169,15 +169,6 @@ developerRoutes.get(
   developerAuth,
   checkPermission(developerRolePermissionList.school.read),
   SchoolController.getAllSchools
-);
-
-developerRoutes.patch(
-  '/update-school/:schoolId',
-  developerAuth,
-  checkPermission(developerRolePermissionList.school.update),
-  MediaUpload(),
-  validator('schoolUpdateProfileSchema'),
-  SchoolController.updateSchoolById
 );
 
 developerRoutes.get(
