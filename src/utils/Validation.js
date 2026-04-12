@@ -473,7 +473,7 @@ const adminVerifyOtpCommonSchema = joi.object({
 });
 
 const adminSendOtpCommonSchema = joi.object({
-  email: joistring.email().required().label('Email'),
+  email: joistring.email().required().label('Email or Phone Number'),
   type: joistring
     .valid('login', 'registration', 'forgotPassword', 'admin_email_change')
     .required()
