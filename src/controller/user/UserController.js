@@ -1,238 +1,205 @@
-import User from '../../models/user/User.js';
-import Teacher from '../../models/teacher/Teacher.js';
-import { responseMessage } from '../../utils/ResponseMessage.js';
+import { StatusCodes } from 'http-status-codes';
+import SchoolTheme from '../../models/school/SchoolTheme.js';
 import {
-  ResponseHandler,
   CatchErrorHandler,
+  ResponseHandler,
   encryptPassword,
 } from '../../services/CommonServices.js';
+import { responseMessage } from '../../utils/ResponseMessage.js';
 import bcrypt from 'bcryptjs';
-import { StatusCodes } from 'http-status-codes';
-import {
-  forgotPasswordOtpMail,
-  sendRegisterVerificationEmail,
-} from '../../services/EmailServices.js';
-import Logger from '../../utils/Logger.js';
-import {
-  // generateOtp,
-  storeOtp,
-  verifyOtp,
-  checkOtpRateLimit,
-} from '../../services/OtpService.js';
 import {
   generateAccessToken,
   generateRefreshToken,
   setRefreshTokenCookie,
-  clearRefreshTokenCookie,
 } from '../../services/TokenService.js';
+import User from '../../models/user/User.js';
+import Teacher from '../../models/teacher/Teacher.js';
+import Student from '../../models/student/Student.js';
+import * as OtpService from '../../services/OtpService.js';
+import * as SmsService from '../../services/SmsService.js';
+import config from '../../config/Index.js';
 
-const logger = new Logger('./src/controller/user/UserController.js');
-
-//#region Create User (Signup with OTP)
-export const createUser = async (req, res) => {
+//#region 🏫 Get School Profile by School Code
+export const getSchoolProfile = async (req, res) => {
   try {
-    const { fullName, email, password, phoneNumber, gender } = req.body;
+    const school = req.school;
 
-    const existingUser = await User.findOne({
-      $or: [{ email }, { phoneNumber }],
-      isDeleted: false,
-    });
-
-    if (existingUser) {
-      return ResponseHandler(
-        res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.USER_ALREADY_EXIST
-      );
-    }
-
-    const rateLimit = await checkOtpRateLimit('user', email);
-    if (rateLimit.limited)
-      return ResponseHandler(
-        res,
-        StatusCodes.TOO_MANY_REQUESTS,
-        rateLimit.message
-      );
-
-    const hashedPassword = await encryptPassword(password);
-
-    const newUser = await User.create({
-      fullName,
-      email,
-      gender,
-      password: hashedPassword,
-      phoneNumber,
-      isActive: false,
-      isVerify: false,
-    });
-
-    // const otp = await generateOtp();
-    const otp = 444444;
-    await storeOtp('user', email, otp);
-
-    if (email) {
-      // Reusing email service, could be improved with dynamic template
-      await sendRegisterVerificationEmail(email, otp, 'User');
-    }
+    const theme = await SchoolTheme.findOne({ schoolId: school._id });
 
     return ResponseHandler(
       res,
-      StatusCodes.CREATED,
-      responseMessage.USER_SIGNUP_SUCCESSFULLY,
+      StatusCodes.OK,
+      responseMessage.SCHOOL_RETRIEVED_SUCCESSFULLY,
       {
-        email: newUser.email,
-        phoneNumber: newUser.phoneNumber,
+        school: {
+          ...school.toObject(),
+          theme: theme || {},
+        },
       }
     );
   } catch (error) {
-    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
-//#endregion
 
-//#region Verify Signup OTP
-export const verifySignup = async (req, res) => {
+//#region 👤 Get User Profile (Authenticated)
+export const getProfile = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const userProfile = req.user;
+    const userIdentity = req.userIdentity;
+    const school = req.school;
 
-    const user = await User.findOne({ email });
-    if (!user)
+    if (!userProfile) {
       return ResponseHandler(
         res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.USER_NOT_EXIST
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_PROFILE_NOT_FOUND
       );
-    if (user.isVerify)
-      return ResponseHandler(
-        res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.USER_ALREADY_VERIFIED
-      );
-
-    const otpResult = await verifyOtp('user', email, otp);
-    if (!otpResult.success) {
-      if (otpResult.maxAttemptsReached && !user.isVerify) {
-        await User.deleteOne({ _id: user._id });
-        return ResponseHandler(
-          res,
-          StatusCodes.BAD_REQUEST,
-          responseMessage.TOO_MANY_OTP_ATTEMPTS_REGISTRATION_CANCE
-        );
-      }
-      return ResponseHandler(res, StatusCodes.BAD_REQUEST, otpResult.message);
     }
 
-    user.isVerify = true;
-    user.isActive = true;
-    await user.save();
+    const theme = await SchoolTheme.findOne({ schoolId: school._id });
 
-    return ResponseHandler(res, StatusCodes.OK, responseMessage.OTP_VERIFIED);
+    const data = {
+      profile: userProfile,
+      identity: userIdentity,
+      school: {
+        ...school.toObject(),
+        theme: theme || {},
+      },
+    };
+
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.PROFILE_FOUND,
+      data
+    );
   } catch (error) {
-    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
 //#endregion
+//#endregion
 
-//#region Login Step 1: Check credentials & Send OTP
+//#region 🔑 User Login
 export const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { phoneNumber, password } = req.body;
+    const school = req.school;
 
-    const user = await User.findOne({ email, isDeleted: false });
-    if (!user)
+    // 1. Find Record in User model (Auth Identity)
+    const userIdentity = await User.findOne({
+      phoneNumber,
+      schoolId: school._id,
+      isDeleted: false,
+    });
+
+    if (!userIdentity) {
       return ResponseHandler(
         res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.USER_NOT_EXIST
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_NOT_FOUND
       );
+    }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid)
+    let userProfile;
+    if (userIdentity.userType === config.TEACHER) {
+      userProfile = await Teacher.findOne({
+        _id: userIdentity.teacherId,
+        isDeleted: false,
+      });
+    } else if (userIdentity.userType === config.STUDENT) {
+      userProfile = await Student.findOne({
+        _id: userIdentity.studentId,
+        isDeleted: false,
+      });
+    }
+
+    if (!userProfile) {
+      return ResponseHandler(
+        res,
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_PROFILE_NOT_FOUND
+      );
+    }
+
+    // 2. Verify Password
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      userProfile.password
+    );
+    if (!isPasswordValid) {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
         responseMessage.INVALID_CREDENTIALS
       );
+    }
 
-    if (!user.isVerify)
-      return ResponseHandler(
-        res,
-        StatusCodes.UNAUTHORIZED,
-        responseMessage.PLEASE_VERIFY_YOUR_ACCOUNT_FIRST
-      );
-    if (!user.isActive)
-      return ResponseHandler(
-        res,
-        StatusCodes.UNAUTHORIZED,
-        responseMessage.YOUR_ACCOUNT_IS_DISABLED
-      );
-
-    // Rate Limit check for OTP
-    const rateLimit = await checkOtpRateLimit('user_login', email);
-    if (rateLimit.limited)
-      return ResponseHandler(
-        res,
-        StatusCodes.TOO_MANY_REQUESTS,
-        rateLimit.message
-      );
-
-    // Send Login OTP
-    // const otp = await generateOtp();
-    const otp = 444444;
-    await storeOtp('user_login', email, otp);
-
-    // Abstracting email send
-    await sendRegisterVerificationEmail(email, otp, 'User');
-
-    return ResponseHandler(
-      res,
-      StatusCodes.OK,
-      responseMessage.CREDENTIALS_VERIFIED_OTP_SENT_TO_EMAIL_T,
-      { email }
-    );
-  } catch (error) {
-    logger.error(error);
-    return CatchErrorHandler(res, error);
-  }
-};
-//#endregion
-
-//#region Login Step 2: Verify Login OTP and Return Tokens
-export const verifyLoginOtp = async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-
-    const user = await User.findOne({ email, isDeleted: false });
-    if (!user)
+    if (!userProfile.isActive) {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
-        responseMessage.USER_NOT_EXIST
+        responseMessage.USER_NOT_ACTIVE
       );
+    }
 
-    const otpResult = await verifyOtp('user_login', email, otp);
-    if (!otpResult.success)
-      return ResponseHandler(res, StatusCodes.BAD_REQUEST, otpResult.message);
+    if (!userProfile.isVerified) {
+      const otpNamespace =
+        userIdentity.userType === config.TEACHER
+          ? config.TEACHER
+          : config.STUDENT;
+      const rateLimit = await OtpService.checkOtpRateLimit(
+        otpNamespace,
+        phoneNumber
+      );
+      if (rateLimit.limited) {
+        return ResponseHandler(
+          res,
+          StatusCodes.TOO_MANY_REQUESTS,
+          rateLimit.message
+        );
+      }
 
-    const payload = { id: user._id, type: 'user' };
+      const otp = 444444; // Standardized for development
+      await OtpService.storeOtp(otpNamespace, phoneNumber, otp);
+      await SmsService.sendSms(phoneNumber, `Your verification code: ${otp}`);
+
+      return ResponseHandler(
+        res,
+        StatusCodes.OK,
+        responseMessage.ACCOUNT_NOT_VERIFIED,
+        {
+          requireOtp: true,
+          phoneNumber,
+          type: 'login',
+          userType: userIdentity.userType,
+        }
+      );
+    }
+
+    // 3. Generate Tokens
+    const payload = {
+      id: userIdentity._id,
+      profileId: userProfile._id,
+      type: 'user',
+      userType: userIdentity.userType,
+    };
+
     const accessToken = generateAccessToken(payload);
     const refreshToken = generateRefreshToken(payload);
 
     setRefreshTokenCookie(res, refreshToken);
-    user.isLogin = true;
-    user.lastLogin = new Date();
-    await user.save();
 
-    if (user.userType === 'teacher' && user.teacherId) {
-      await Teacher.findByIdAndUpdate(user.teacherId, {
-        lastLogin: new Date(),
-      });
-    }
+    // 4. Update last login
+    userProfile.lastLogin = new Date();
+    userProfile.isLogin = true;
+    await userProfile.save();
 
-    const userData = user.toObject();
+    const userData = userProfile.toObject();
     delete userData.password;
+
+    const theme = await SchoolTheme.findOne({ schoolId: school._id });
 
     return ResponseHandler(
       res,
@@ -240,120 +207,55 @@ export const verifyLoginOtp = async (req, res) => {
       responseMessage.USER_LOGIN_SUCCESSFULLY,
       {
         accessToken,
-        user: userData,
+        user: { ...userData, userType: userIdentity.userType },
+        school: {
+          ...school.toObject(),
+          theme: theme || {},
+        },
       }
     );
   } catch (error) {
-    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
 //#endregion
 
-//#region Refresh Token
-export const refreshToken = async (req, res) => {
+//#region 📨 Send OTP (Login / Forgot Password)
+export const sendOtp = async (req, res) => {
   try {
-    const { token_id, token_type } = req;
+    const { phoneNumber, type } = req.body;
+    const school = req.school;
 
-    if (token_type !== 'user')
+    const userIdentity = await User.findOne({
+      phoneNumber,
+      schoolId: school._id,
+      isDeleted: false,
+    });
+
+    if (!userIdentity) {
       return ResponseHandler(
         res,
-        StatusCodes.FORBIDDEN,
-        responseMessage.INVALID_TOKEN_TYPE
-      );
-
-    const user = await User.findById(token_id);
-    if (!user || user.isDeleted || !user.isActive || !user.isLogin) {
-      clearRefreshTokenCookie(res);
-      return ResponseHandler(
-        res,
-        StatusCodes.UNAUTHORIZED,
-        responseMessage.INVALID_OR_DISABLED_ACCOUNT ||
-          'Your session has expired. Please log in again.'
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_NOT_FOUND
       );
     }
 
-    const payload = { id: user._id, type: 'user' };
-    const newAccessToken = generateAccessToken(payload);
-    const newRefreshToken = generateRefreshToken(payload);
-
-    setRefreshTokenCookie(res, newRefreshToken);
-
-    return ResponseHandler(
-      res,
-      StatusCodes.OK,
-      responseMessage.TOKEN_REFRESHED_SUCCESSFULLY,
-      {
-        accessToken: newAccessToken,
-      }
+    const otpNamespace = userIdentity.userType;
+    const rateLimit = await OtpService.checkOtpRateLimit(
+      otpNamespace,
+      phoneNumber
     );
-  } catch (error) {
-    logger.error(error);
-    return CatchErrorHandler(res, error);
-  }
-};
-//#endregion
-
-//#region Logout
-export const logout = async (req, res) => {
-  try {
-    const { token_id } = req;
-    await User.findByIdAndUpdate(token_id, { isLogin: false });
-    clearRefreshTokenCookie(res);
-    return ResponseHandler(
-      res,
-      StatusCodes.OK,
-      responseMessage.LOGGED_OUT_SUCCESSFULLY
-    );
-  } catch (error) {
-    logger.error(error);
-    return CatchErrorHandler(res, error);
-  }
-};
-//#endregion
-
-//#region Forgot Password (Send OTP)
-export const forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const user = await User.findOne({ email, isDeleted: false });
-    if (!user) {
-      return ResponseHandler(
-        res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.USER_NOT_EXIST
-      );
-    }
-
-    if (!user.isVerify) {
-      return ResponseHandler(
-        res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.PLEASE_VERIFY_YOUR_ACCOUNT_FIRST
-      );
-    }
-
-    if (!user.isActive) {
-      return ResponseHandler(
-        res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.YOUR_ACCOUNT_IS_DISABLED
-      );
-    }
-
-    const rateLimit = await checkOtpRateLimit('user_forgot', email);
-    if (rateLimit.limited)
+    if (rateLimit.limited) {
       return ResponseHandler(
         res,
         StatusCodes.TOO_MANY_REQUESTS,
         rateLimit.message
       );
+    }
 
-    // const otp = await generateOtp();
-    const otp = 444444;
-    await storeOtp('user_forgot', email, otp);
-    await forgotPasswordOtpMail(email, otp);
+    const otp = 444444; // Standardized for development
+    await OtpService.storeOtp(otpNamespace, phoneNumber, otp);
+    await SmsService.sendSms(phoneNumber, `Your verification code: ${otp}`);
 
     return ResponseHandler(
       res,
@@ -361,59 +263,195 @@ export const forgotPassword = async (req, res) => {
       responseMessage.OTP_SENT_SUCCESSFULLY
     );
   } catch (error) {
-    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
 //#endregion
 
-//#region Verify Forgot Password OTP
-export const verifyOtpAction = async (req, res) => {
+//#region 🔐 Verify OTP
+export const verifyOtp = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const { phoneNumber, otp, type } = req.body; // Wait, let me check line 243 again.
+    const school = req.school;
 
-    const user = await User.findOne({ email, isDeleted: false });
-    if (!user)
+    const userIdentity = await User.findOne({
+      phoneNumber,
+      schoolId: school._id,
+      isDeleted: false,
+    });
+
+    if (!userIdentity) {
       return ResponseHandler(
         res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.USER_NOT_EXIST
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_NOT_FOUND
       );
+    }
 
-    const otpResult = await verifyOtp('user_forgot', email, otp);
-    if (!otpResult.success)
+    const otpNamespace = userIdentity.userType;
+    const otpResult = await OtpService.verifyOtp(
+      otpNamespace,
+      phoneNumber,
+      otp
+    );
+
+    if (!otpResult.success) {
       return ResponseHandler(res, StatusCodes.BAD_REQUEST, otpResult.message);
+    }
+
+    let userProfile;
+    if (userIdentity.userType === config.TEACHER) {
+      userProfile = await Teacher.findOne({
+        _id: userIdentity.teacherId,
+        isDeleted: false,
+      });
+    } else if (userIdentity.userType === config.STUDENT) {
+      userProfile = await Student.findOne({
+        _id: userIdentity.studentId,
+        isDeleted: false,
+      });
+    }
+
+    if (!userProfile) {
+      return ResponseHandler(
+        res,
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_PROFILE_NOT_FOUND
+      );
+    }
+
+    // If verifying for login, complete the activation and return tokens
+    if (type === 'login') {
+      if (!userProfile.isVerified) {
+        userProfile.isVerified = true;
+        userProfile.isActive = true;
+        await userProfile.save();
+
+        userIdentity.isActive = true;
+        userIdentity.isVerified = true;
+        await userIdentity.save();
+      }
+
+      const payload = {
+        id: userIdentity._id,
+        profileId: userProfile._id,
+        type: 'user',
+        userType: userIdentity.userType,
+      };
+
+      const accessToken = generateAccessToken(payload);
+      const refreshToken = generateRefreshToken(payload);
+      setRefreshTokenCookie(res, refreshToken);
+
+      userProfile.isLogin = true;
+      userProfile.lastLogin = new Date();
+      await userProfile.save();
+
+      const userData = userProfile.toObject();
+      delete userData.password;
+      const theme = await SchoolTheme.findOne({ schoolId: school._id });
+
+      return ResponseHandler(
+        res,
+        StatusCodes.OK,
+        responseMessage.OTP_VERIFIED,
+        {
+          accessToken,
+          user: { ...userData, userType: userIdentity.userType },
+          school: { ...school.toObject(), theme: theme || {} },
+        }
+      );
+    }
 
     return ResponseHandler(res, StatusCodes.OK, responseMessage.OTP_VERIFIED);
   } catch (error) {
-    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
 //#endregion
 
-//#region Reset Password
+//#region ❓ Forgot Password
+export const forgotPassword = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    const school = req.school;
+
+    const userIdentity = await User.findOne({
+      phoneNumber,
+      schoolId: school._id,
+      isDeleted: false,
+    });
+
+    if (!userIdentity) {
+      return ResponseHandler(
+        res,
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_NOT_FOUND
+      );
+    }
+
+    const otpNamespace = userIdentity.userType;
+    const rateLimit = await OtpService.checkOtpRateLimit(
+      otpNamespace,
+      phoneNumber
+    );
+    if (rateLimit.limited) {
+      return ResponseHandler(
+        res,
+        StatusCodes.TOO_MANY_REQUESTS,
+        rateLimit.message
+      );
+    }
+
+    const otp = 444444; // Standardized for development
+    await OtpService.storeOtp(otpNamespace, phoneNumber, otp);
+    await SmsService.sendSms(
+      phoneNumber,
+      `Your forgot password verification code: ${otp}`
+    );
+
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.OTP_SENT_SUCCESSFULLY
+    );
+  } catch (error) {
+    return CatchErrorHandler(res, error);
+  }
+};
+//#endregion
+
+//#region 🔄 Reset Password
 export const resetPassword = async (req, res) => {
   try {
-    const { email, newPassword, confirmPassword } = req.body;
+    const { phoneNumber, newPassword } = req.body;
+    const school = req.school;
 
-    const user = await User.findOne({ email, isDeleted: false });
-    if (!user)
+    const userIdentity = await User.findOne({
+      phoneNumber,
+      schoolId: school._id,
+      isDeleted: false,
+    });
+
+    if (!userIdentity) {
       return ResponseHandler(
         res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.USER_NOT_EXIST
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_NOT_FOUND
       );
+    }
 
-    if (newPassword !== confirmPassword)
-      return ResponseHandler(
-        res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.PASSWORD_NOT_MATCH
-      );
+    const hashedPassword = await encryptPassword(newPassword);
 
-    user.password = await encryptPassword(newPassword);
-    await user.save();
+    if (userIdentity.userType === config.TEACHER) {
+      await Teacher.findByIdAndUpdate(userIdentity.teacherId, {
+        password: hashedPassword,
+      });
+    } else if (userIdentity.userType === config.STUDENT) {
+      await Student.findByIdAndUpdate(userIdentity.studentId, {
+        password: hashedPassword,
+      });
+    }
 
     return ResponseHandler(
       res,
@@ -421,47 +459,47 @@ export const resetPassword = async (req, res) => {
       responseMessage.PASSWORD_RESET_SUCCESSFULLY
     );
   } catch (error) {
-    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
 //#endregion
 
-//#region Change Password
+//#region 🔄 Change Password (Authenticated)
 export const changePassword = async (req, res) => {
   try {
-    const { oldPassword, newPassword, confirmPassword } = req.body;
-    const user = await User.findOne({ _id: req.user_id, isDeleted: false });
-    if (!user)
+    const { oldPassword, newPassword } = req.body;
+    const userProfile = req.user; // Directly using profile from middleware
+
+    if (!userProfile) {
       return ResponseHandler(
         res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.USER_NOT_EXIST
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_PROFILE_NOT_FOUND
       );
+    }
 
-    const isPasswordValid = await bcrypt.compare(oldPassword, user.password);
-    if (!isPasswordValid)
+    const isPasswordValid = await bcrypt.compare(
+      oldPassword,
+      userProfile.password
+    );
+    if (!isPasswordValid) {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
         responseMessage.INVALID_OLD_PASSWORD
       );
+    }
 
-    if (oldPassword === newPassword)
+    if (oldPassword === newPassword) {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
         responseMessage.PASSWORD_ARE_SAME
       );
-    if (newPassword !== confirmPassword)
-      return ResponseHandler(
-        res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.PASSWORD_NOT_MATCH
-      );
+    }
 
-    user.password = await encryptPassword(newPassword);
-    await user.save();
+    userProfile.password = await encryptPassword(newPassword);
+    await userProfile.save();
 
     return ResponseHandler(
       res,
@@ -469,60 +507,6 @@ export const changePassword = async (req, res) => {
       responseMessage.PASSWORD_CHANGE_SUCCESSFULLY
     );
   } catch (error) {
-    logger.error(error);
-    return CatchErrorHandler(res, error);
-  }
-};
-//#endregion
-
-//#region Profile
-export const profile = async (req, res) => {
-  try {
-    const user = await User.findOne({ _id: req.user_id, isDeleted: false })
-      .select('-password')
-      .lean();
-    if (!user)
-      return ResponseHandler(
-        res,
-        StatusCodes.BAD_REQUEST,
-        responseMessage.USER_NOT_EXIST
-      );
-
-    return ResponseHandler(
-      res,
-      StatusCodes.OK,
-      responseMessage.PROFILE_FETCHED,
-      user
-    );
-  } catch (error) {
-    logger.error(error);
-    return CatchErrorHandler(res, error);
-  }
-};
-//#endregion
-
-//#region Update Profile
-export const updateProfile = async (req, res) => {
-  try {
-    const { fullName, email, phoneNumber } = req.body;
-    const update = await User.findOneAndUpdate(
-      { _id: req.user_id },
-      {
-        fullName,
-        email,
-        phoneNumber,
-        [req.imageUrl ? 'image' : '']: req.imageUrl,
-      },
-      { new: true }
-    ).select('-password');
-    return ResponseHandler(
-      res,
-      StatusCodes.OK,
-      responseMessage.PROFILE_UPDATED,
-      update
-    );
-  } catch (error) {
-    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };

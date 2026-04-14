@@ -2,6 +2,8 @@ import { StatusCodes } from 'http-status-codes';
 import { responseMessage } from '../utils/ResponseMessage.js';
 import Logger from '../utils/Logger.js';
 import User from '../models/user/User.js';
+import Teacher from '../models/teacher/Teacher.js';
+import Student from '../models/student/Student.js';
 import Admin from '../models/common/Admin.js';
 import School from '../models/school/School.js';
 import { verifyToken } from '../services/TokenService.js';
@@ -46,29 +48,45 @@ export const userAuth = async (req, res, next) => {
       );
     }
 
-    const user = await User.findById(decodeToken.id);
-    if (!user) {
+    const userIdentity = await User.findById(decodeToken.id);
+    if (!userIdentity) {
       return ResponseHandler(
         res,
         StatusCodes.NOT_FOUND,
         responseMessage.USER_NOT_FOUND
       );
     }
-    if (user.isDeleted) {
+
+    let userProfile;
+    if (userIdentity.userType === config.TEACHER) {
+      userProfile = await Teacher.findById(userIdentity.teacherId);
+    } else if (userIdentity.userType === config.STUDENT) {
+      userProfile = await Student.findById(userIdentity.studentId);
+    }
+
+    if (!userProfile) {
+      return ResponseHandler(
+        res,
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_PROFILE_NOT_FOUND
+      );
+    }
+
+    if (userProfile.isDeleted) {
       return ResponseHandler(
         res,
         StatusCodes.UNAUTHORIZED,
-        responseMessage.USER_ACCOUNT_DELETED || 'User account is deleted'
+        responseMessage.USER_ACCOUNT_DELETED
       );
     }
-    if (!user.isActive) {
+    if (!userProfile.isActive) {
       return ResponseHandler(
         res,
         StatusCodes.UNAUTHORIZED,
         responseMessage.USER_NOT_ACTIVE
       );
     }
-    if (!user.isLogin) {
+    if (!userProfile.isLogin) {
       return ResponseHandler(
         res,
         StatusCodes.UNAUTHORIZED,
@@ -76,8 +94,11 @@ export const userAuth = async (req, res, next) => {
       );
     }
 
-    req.user_id = user._id;
-    req.user = user;
+    req.user_id = userProfile._id;
+    req.user = userProfile;
+    req.userType = userIdentity.userType;
+    req.userIdentity = userIdentity;
+    req.identityId = userIdentity._id;
     next();
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
@@ -152,7 +173,7 @@ export const adminAuth = async (req, res, next) => {
       return ResponseHandler(
         res,
         StatusCodes.UNAUTHORIZED,
-        'Your session has expired. Please log in again.'
+        responseMessage.SESSION_EXPIRED
       );
     }
 
@@ -237,7 +258,7 @@ export const developerAuth = async (req, res, next) => {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
-        'Your session has expired. Please log in again.'
+        responseMessage.SESSION_EXPIRED
       );
     }
 
@@ -333,7 +354,7 @@ export const schoolScope = async (req, res, next) => {
         return ResponseHandler(
           res,
           StatusCodes.NOT_FOUND,
-          'School not found with provided schoolCode'
+          responseMessage.SCHOOL_NOT_FOUND
         );
       }
 
@@ -350,7 +371,7 @@ export const schoolScope = async (req, res, next) => {
         return ResponseHandler(
           res,
           StatusCodes.NOT_FOUND,
-          'School not found with provided school_id'
+          responseMessage.SCHOOL_NOT_FOUND_FOR_ID
         );
       }
     }
@@ -360,7 +381,7 @@ export const schoolScope = async (req, res, next) => {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
-        'School context missing (provide schoolCode or school_id)'
+        responseMessage.SCHOOL_CONTEXT_MISSING
       );
     }
 
@@ -369,7 +390,7 @@ export const schoolScope = async (req, res, next) => {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
-        'School account is inactive'
+        responseMessage.SCHOOL_ACCOUNT_INACTIVE
       );
     }
 
@@ -399,7 +420,7 @@ export const schoolScope = async (req, res, next) => {
           return ResponseHandler(
             res,
             StatusCodes.BAD_REQUEST,
-            'School account is not verified'
+            responseMessage.SCHOOL_ACCOUNT_NOT_VERIFIED
           );
         }
       }
@@ -421,14 +442,14 @@ export const schoolScope = async (req, res, next) => {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
-        'Invalid school_id format'
+        responseMessage.INVALID_SCHOOL_ID_FORMAT
       );
     }
 
     return ResponseHandler(
       res,
       StatusCodes.INTERNAL_SERVER_ERROR,
-      'Something went wrong while resolving school'
+      responseMessage.ERROR_RESOLVING_SCHOOL
     );
   }
 };

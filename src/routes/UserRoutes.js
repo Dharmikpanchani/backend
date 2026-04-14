@@ -1,44 +1,67 @@
 import { Router } from 'express';
 import * as UserController from '../controller/user/UserController.js';
-import { userAuth, refreshTokenAuth } from '../middleware/Auth.js';
-import { MediaUpload } from '../middleware/MediaUpload.js';
 import { authLimiter } from '../middleware/RateLimit.js';
+import { validator } from '../middleware/Validator.js';
+import { schoolScope, userAuth } from '../middleware/Auth.js';
 
 const userRoutes = Router();
 
-// Apply strict rate limiting for auth endpoints
-userRoutes.use('/signup', authLimiter);
 userRoutes.use('/login', authLimiter);
-userRoutes.use('/forgot-password', authLimiter);
 
-//#region User authentication routes
-userRoutes.post('/signup', UserController.createUser);
-userRoutes.post('/verify-signup', UserController.verifySignup);
-
-userRoutes.post('/login', UserController.login);
-userRoutes.post('/verify-login-otp', UserController.verifyLoginOtp);
-
-// Token Management
 userRoutes.post(
-  '/refresh-token',
-  refreshTokenAuth,
-  UserController.refreshToken
+  '/getSchool-profile',
+  schoolScope,
+  validator('getSchoolProfileSchema'),
+  UserController.getSchoolProfile
 );
-userRoutes.post('/logout', refreshTokenAuth, UserController.logout);
 
-userRoutes.post('/forgot-password', UserController.forgotPassword);
-userRoutes.post('/verify-password-otp', UserController.verifyOtpAction);
-userRoutes.post('/reset-password', UserController.resetPassword);
-
-// Protected Auth Routes
-userRoutes.post('/change-password', userAuth, UserController.changePassword);
-userRoutes.get('/profile', userAuth, UserController.profile);
-userRoutes.post(
-  '/update-profile',
+userRoutes.get(
+  '/get-profile',
   userAuth,
-  MediaUpload(),
-  UserController.updateProfile
+  schoolScope,
+  UserController.getProfile
 );
-//#endregion
+userRoutes.post(
+  '/login',
+  schoolScope,
+  validator('userLoginSchema'),
+  UserController.login
+);
+
+userRoutes.post(
+  '/send-otp',
+  schoolScope,
+  validator('userSendOtpSchema'),
+  UserController.sendOtp
+);
+
+userRoutes.post(
+  '/verify-otp',
+  schoolScope,
+  validator('userVerifyOtpSchema'),
+  UserController.verifyOtp
+);
+
+userRoutes.post(
+  '/forgot-password',
+  schoolScope,
+  validator('userForgotPasswordSchema'),
+  UserController.forgotPassword
+);
+
+userRoutes.post(
+  '/reset-password',
+  schoolScope,
+  validator('userResetPasswordSchema'),
+  UserController.resetPassword
+);
+
+userRoutes.post(
+  '/change-password',
+  userAuth,
+  schoolScope,
+  validator('changePasswordSchema'),
+  UserController.changePassword
+);
 
 export default userRoutes;

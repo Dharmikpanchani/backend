@@ -22,6 +22,8 @@ const config = {
   SUPER_ADMIN: 'super_developer',
   DEVELOPER: 'developer',
   SCHOOL_ADMIN: 'school_admin',
+  TEACHER: 'teacher',
+  STUDENT: 'student',
 };
 
 export default config;

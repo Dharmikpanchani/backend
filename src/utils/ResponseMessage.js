@@ -228,4 +228,17 @@ export const responseMessage = {
   OTP_BLOCKED: 'You are blocked due to too many failed attempts.',
   TOO_MANY_OTP_ATTEMPTS: 'Too many wrong OTP attempts.',
   TOO_MANY_OTP_REQUESTS: 'Too many OTP requests.',
+  USER_PROFILE_NOT_FOUND: 'User profile not found',
+  SESSION_EXPIRED: 'Your session has expired. Please log in again.',
+  SCHOOL_NOT_FOUND_FOR_ID: 'School not found with provided school_id',
+  SCHOOL_CONTEXT_MISSING:
+    'School context missing (provide schoolCode or school_id)',
+  SCHOOL_ACCOUNT_INACTIVE: 'School account is inactive',
+  SCHOOL_ACCOUNT_NOT_VERIFIED: 'School account is not verified',
+  INVALID_SCHOOL_ID_FORMAT: 'Invalid school_id format',
+  ERROR_RESOLVING_SCHOOL: 'Something went wrong while resolving school',
+  USER_ACCOUNT_DELETED: 'User account is deleted',
+  STUDENT_LOGIN_NOT_IMPLEMENTED: 'Student login is not implemented yet',
+  ACCOUNT_NOT_VERIFIED:
+    'Your account is not verified. OTP sent to your phone number.',
 };

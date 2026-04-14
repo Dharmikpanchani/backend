@@ -9,14 +9,6 @@ const UserSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
-    otp: {
-      type: Number,
-      default: null,
-    },
-    otpExpireAt: {
-      type: Date,
-      default: null,
-    },
     // Multi-tenant fields
     schoolId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -26,30 +18,28 @@ const UserSchema = new mongoose.Schema(
     teacherId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Teacher',
-      required: true,
+      required: false,
+    },
+    studentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Student',
+      required: false,
     },
     userType: {
       type: String,
       enum: ['student', 'teacher', 'admin'],
       required: true,
     },
-    isActive: {
-      type: Boolean,
-      default: true,
-    },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    lastLogin: {
-      type: Date,
-    },
-    isDeleted: {
-      type: Boolean,
-      default: false,
-    },
     attendanceId: {
       type: String,
+      default: null,
+    },
+    otp: {
+      type: Number,
+      default: null,
+    },
+    otpExpireAt: {
+      type: Date,
       default: null,
     },
   },

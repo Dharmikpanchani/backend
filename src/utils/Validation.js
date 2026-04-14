@@ -482,6 +482,55 @@ const adminSendOtpCommonSchema = joi.object({
   school_id: joistring.optional().label('School ID'),
 });
 
+const userLoginSchema = joi.object().keys({
+  phoneNumber: joistring.required().label('Phone Number'),
+  password: joistring.required().label('Password'),
+  schoolCode: joistring.required().label('School Code'),
+});
+
+const userVerifyOtpSchema = joi.object({
+  phoneNumber: joistring.required().label('Phone Number'),
+  otp: joistring.required().length(6).label('OTP'),
+  type: joistring.valid('login', 'forgotPassword').required().label('Type'),
+  schoolCode: joistring.required().label('School Code'),
+});
+
+const userSendOtpSchema = joi.object({
+  phoneNumber: joistring.required().label('Phone Number'),
+  type: joistring.valid('login', 'forgotPassword').required().label('Type'),
+  schoolCode: joistring.required().label('School Code'),
+});
+
+const userForgotPasswordSchema = joi.object({
+  phoneNumber: joistring.required().label('Phone Number'),
+  schoolCode: joistring.required().label('School Code'),
+});
+
+const userResetPasswordSchema = joi.object({
+  phoneNumber: joistring.required().label('Phone Number'),
+  schoolCode: joistring.required().label('School Code'),
+  newPassword: joiPassword
+    .string()
+    .min(8)
+    .minOfUppercase(1)
+    .minOfLowercase(1)
+    .minOfNumeric(1)
+    .minOfSpecialCharacters(1)
+    .noWhiteSpaces()
+    .required()
+    .label('New Password'),
+  confirmPassword: joiPassword
+    .string()
+    .required()
+    .valid(joi.ref('newPassword'))
+    .messages({ 'any.only': 'Passwords do not match' })
+    .label('Confirm Password'),
+});
+
+const getSchoolProfileSchema = joi.object({
+  schoolCode: joistring.required().label('School Code'),
+});
+
 export default {
   adminLoginSchema,
   changePasswordSchema,
@@ -502,4 +551,10 @@ export default {
   getSchoolImageSchema,
   adminVerifyOtpCommonSchema,
   adminSendOtpCommonSchema,
+  userLoginSchema,
+  getSchoolProfileSchema,
+  userVerifyOtpSchema,
+  userSendOtpSchema,
+  userForgotPasswordSchema,
+  userResetPasswordSchema,
 };
