@@ -223,7 +223,7 @@ export const login = async (req, res) => {
 //#region 📨 Send OTP (Login / Forgot Password)
 export const sendOtp = async (req, res) => {
   try {
-    const { phoneNumber, type } = req.body;
+    const { phoneNumber } = req.body;
     const school = req.school;
 
     const userIdentity = await User.findOne({
@@ -271,7 +271,7 @@ export const sendOtp = async (req, res) => {
 //#region 🔐 Verify OTP
 export const verifyOtp = async (req, res) => {
   try {
-    const { phoneNumber, otp, type } = req.body; // Wait, let me check line 243 again.
+    const { phoneNumber, otp, type } = req.body;
     const school = req.school;
 
     const userIdentity = await User.findOne({
