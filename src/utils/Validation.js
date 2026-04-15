@@ -462,10 +462,16 @@ const developerSendOtpCommonSchema = joi.object({
 });
 
 const adminVerifyOtpCommonSchema = joi.object({
-  email: joistring.email().required().label('Email'),
+  email: joistring.required().label('Email or Phone Number'),
   otp: joistring.required().length(6).label('OTP'),
   type: joistring
-    .valid('login', 'registration', 'forgotPassword', 'admin_email_change')
+    .valid(
+      'login',
+      'registration',
+      'forgotPassword',
+      'admin_email_change',
+      'teacher'
+    )
     .required()
     .label('Type'),
   schoolCode: joistring.optional().label('School Code'),
@@ -473,9 +479,15 @@ const adminVerifyOtpCommonSchema = joi.object({
 });
 
 const adminSendOtpCommonSchema = joi.object({
-  email: joistring.email().required().label('Email or Phone Number'),
+  email: joistring.required().label('Email or Phone Number'),
   type: joistring
-    .valid('login', 'registration', 'forgotPassword', 'admin_email_change')
+    .valid(
+      'login',
+      'registration',
+      'forgotPassword',
+      'admin_email_change',
+      'teacher'
+    )
     .required()
     .label('Type'),
   schoolCode: joistring.optional().label('School Code'),

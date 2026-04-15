@@ -1,5 +1,6 @@
 import { StatusCodes } from 'http-status-codes';
 import SchoolTheme from '../../models/school/SchoolTheme.js';
+import School from '../../models/school/School.js';
 import {
   CatchErrorHandler,
   ResponseHandler,
@@ -41,6 +42,28 @@ export const getSchoolProfile = async (req, res) => {
     return CatchErrorHandler(res, error);
   }
 };
+
+//#region 🏫 Get All School Codes for Sitemap
+export const getSchoolCodes = async (req, res) => {
+  try {
+    const schools = await School.find({
+      isActive: true,
+      isDeleted: false,
+    }).select('schoolCode');
+
+    const codes = schools.map((s) => s.schoolCode);
+
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.SCHOOL_RETRIEVED_SUCCESSFULLY,
+      codes
+    );
+  } catch (error) {
+    return CatchErrorHandler(res, error);
+  }
+};
+//#endregion
 
 //#region 👤 Get User Profile (Authenticated)
 export const getProfile = async (req, res) => {

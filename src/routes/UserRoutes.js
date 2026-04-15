@@ -15,6 +15,8 @@ userRoutes.post(
   UserController.getSchoolProfile
 );
 
+userRoutes.get('/all-school-codes', UserController.getSchoolCodes);
+
 userRoutes.get(
   '/get-profile',
   userAuth,
