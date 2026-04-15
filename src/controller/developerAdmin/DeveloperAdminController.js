@@ -25,16 +25,8 @@ const logger = new Logger(
 //#region ➕ Add / ✏️ Edit DeveloperAdmin Profile
 export const addEditAdminProfile = async (req, res) => {
   try {
-    const {
-      id,
-      name,
-      email,
-      password,
-      role,
-      address,
-      phoneNumber,
-      otp,
-    } = req?.body || {};
+    const { id, name, email, password, role, address, phoneNumber, otp } =
+      req?.body || {};
 
     const payload = {
       name,
