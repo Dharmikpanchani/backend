@@ -211,21 +211,11 @@ export const getAllAdmins = async (req, res) => {
       isVerified,
       isLogin,
       role,
-      adminType,
     } = req?.query || {};
 
     const extraFilters = {
       type: { $in: [config.SUPER_ADMIN, config.DEVELOPER] },
     };
-    if (adminType === 'super_admin') {
-      extraFilters.type = config.SUPER_ADMIN;
-    } else if (adminType === 'admin') {
-      extraFilters.type = config.DEVELOPER;
-      extraFilters.isReferralAdmin = false;
-    } else if (adminType === 'reffral') {
-      extraFilters.type = config.DEVELOPER;
-      extraFilters.isReferralAdmin = true;
-    }
 
     const result = await queryBuilder(Admin, {
       pageNumber,
