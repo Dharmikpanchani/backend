@@ -66,11 +66,6 @@ const AdminSchema = new mongoose.Schema(
 
     address: String,
 
-    isReferralAdmin: {
-      type: Boolean,
-      default: false,
-    },
-
     isSuperAdmin: {
       type: Boolean,
       default: false,

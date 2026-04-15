@@ -33,7 +33,6 @@ export const addEditAdminProfile = async (req, res) => {
       role,
       address,
       phoneNumber,
-      isReferralAdmin,
       otp,
     } = req?.body || {};
 
@@ -42,7 +41,6 @@ export const addEditAdminProfile = async (req, res) => {
       email,
       address,
       phoneNumber,
-      isReferralAdmin,
       type: config.DEVELOPER, // Default type created by developer panel
     };
 
