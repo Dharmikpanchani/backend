@@ -110,6 +110,15 @@ const SchoolSchema = new mongoose.Schema(
       ref: 'Admin',
       default: null,
     },
+    planId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Plan',
+      default: null,
+    },
+    PlanExptyDate: {
+      type: Number,
+      default: null,
+    },
     isVerified: {
       type: Boolean,
       default: false,

@@ -248,4 +248,6 @@ export const responseMessage = {
   PLAN_DELETE_SUCCESS: 'Plan has been deleted successfully.',
   PLAN_STATUS_UPDATED: 'Plan status has been updated successfully.',
   PLAN_ALREADY_EXISTS: 'Plan name already exists.',
+  SCHOOL_PLAN_DATA_FETCHED:
+    'Developer wise school plan data fetched successfully',
 };

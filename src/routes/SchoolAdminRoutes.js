@@ -58,6 +58,12 @@ adminRoutes.post(
   validator('schoolUpdateProfileSchema'),
   SchoolController.updateProfile
 );
+adminRoutes.get(
+  '/get-developer-wise-school-plan',
+  adminAuth,
+  schoolScope,
+  SchoolController.getDeveloperWiseSchoolPlan
+);
 adminRoutes.post(
   '/update-school-theme',
   adminAuth,

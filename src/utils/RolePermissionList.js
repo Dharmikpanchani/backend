@@ -37,6 +37,19 @@ export const developerRolePermissionList = {
   },
 };
 
+export const moduleDescriptionsMapping = {
+  dashboard: 'Dashboard Overview',
+  role: 'Role & Permission Management',
+  admin_user: 'Admin User Management',
+  theme: 'Theme Settings With AI',
+  school_profile: 'School Profile Management',
+  department: 'Department Management',
+  subject: 'Subject Management',
+  class: 'Class Management',
+  section: 'Section Management',
+  teacher: 'Teacher Management',
+};
+
 export const schoolAdminPermission = {
   dashboard: {
     read: 'dashboard_view',

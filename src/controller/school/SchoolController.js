@@ -1,6 +1,8 @@
 import { StatusCodes } from 'http-status-codes';
+import moment from 'moment';
 import School from '../../models/school/School.js';
 import SchoolTheme from '../../models/school/SchoolTheme.js';
+import Plan from '../../models/common/Plan.js';
 import Admin from '../../models/common/Admin.js';
 import {
   CatchErrorHandler,
@@ -18,6 +20,7 @@ import { sendRegisterVerificationEmail } from '../../services/EmailServices.js';
 
 import { responseMessage } from '../../utils/ResponseMessage.js';
 import config from '../../config/Index.js';
+import { moduleDescriptionsMapping } from '../../utils/RolePermissionList.js';
 
 const logger = new Logger('./src/controller/school/SchoolController.js');
 
@@ -214,6 +217,7 @@ export const addEditSchool = async (req, res) => {
         logo: req.logo || '',
         banner: req.banner || '',
         affiliationCertificate: req.affiliationCertificate || '',
+        PlanExptyDate: moment().add(30, 'days').unix(),
       });
 
       // ✅ 6. CREATE DEFAULT ADMIN
@@ -646,6 +650,72 @@ export const updateSchoolTheme = async (req, res) => {
     );
   } catch (error) {
     logger.error(`Update School Theme error: ${error}`);
+    return CatchErrorHandler(res, error);
+  }
+};
+//#endregion
+//#region Helper: Get Module Descriptions
+
+const getModuleDescriptions = (permissions) => {
+  if (!permissions || !Array.isArray(permissions)) return [];
+
+  const uniqueModules = new Set();
+  permissions.forEach((perm) => {
+    const lastUnderscoreIndex = perm.lastIndexOf('_');
+    if (lastUnderscoreIndex !== -1) {
+      uniqueModules.add(perm.substring(0, lastUnderscoreIndex));
+    }
+  });
+
+  return Array.from(uniqueModules)
+    .map(
+      (key) =>
+        moduleDescriptionsMapping[key] ||
+        key
+          .split('_')
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+          .join(' ')
+    )
+    .filter(Boolean);
+};
+//#endregion
+
+//#region Get Developer Wise School Plan
+export const getDeveloperWiseSchoolPlan = async (req, res) => {
+  try {
+    const developerId = req.developer_id;
+
+    if (!developerId) {
+      return ResponseHandler(
+        res,
+        StatusCodes.UNAUTHORIZED,
+        responseMessage.AUTHENTICATION_REQUIRED
+      );
+    }
+
+    // 1. Fetch all plans belonging to this developer
+    const plans = await Plan.find({
+      adminId: developerId,
+      isDeleted: false,
+    }).lean();
+
+    // 3. Map schools into their respective plans
+    const data = plans.map((plan) => {
+      const { permissions, ...planData } = plan;
+      return {
+        ...planData,
+        moduleDescription: getModuleDescriptions(permissions),
+      };
+    });
+
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.SCHOOL_PLAN_DATA_FETCHED,
+      data
+    );
+  } catch (error) {
+    logger.error(`Get Developer Wise School Plan error: ${error}`);
     return CatchErrorHandler(res, error);
   }
 };

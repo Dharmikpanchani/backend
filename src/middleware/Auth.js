@@ -429,6 +429,7 @@ export const schoolScope = async (req, res, next) => {
     // ✅ Inject into request
     req.school_id = schoolId;
     req.school = school;
+    req.developer_id = school.referralId;
 
     req.schoolFilter = {
       schoolId,
