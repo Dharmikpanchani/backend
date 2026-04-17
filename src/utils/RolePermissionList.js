@@ -10,11 +10,11 @@ export const developerRolePermissionList = {
     status: 'school_status',
   },
   role: {
-    create: 'admin_role_add',
-    update: 'admin_role_edit',
-    read: 'admin_role_view',
-    delete: 'admin_role_delete',
-    status: 'admin_role_status',
+    create: 'role_add',
+    update: 'role_edit',
+    read: 'role_view',
+    delete: 'role_delete',
+    status: 'role_status',
   },
   admin_user: {
     create: 'admin_user_add',
@@ -35,11 +35,11 @@ export const schoolAdminPermission = {
     read: 'dashboard_view',
   },
   role: {
-    create: 'admin_role_add',
-    update: 'admin_role_edit',
-    read: 'admin_role_view',
-    delete: 'admin_role_delete',
-    status: 'admin_role_status',
+    create: 'role_add',
+    update: 'role_edit',
+    read: 'role_view',
+    delete: 'role_delete',
+    status: 'role_status',
   },
   admin_user: {
     create: 'admin_user_add',
