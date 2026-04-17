@@ -3,6 +3,7 @@ import { validator } from '../middleware/Validator.js';
 import * as DeveloperAdminController from '../controller/developerAdmin/DeveloperAdminController.js';
 import * as DeveloperAuthController from '../controller/developerAdmin/DeveloperAuthController.js';
 import * as DeveloperRolePermissionController from '../controller/developerAdmin/DeveloperRolePermissionController.js';
+import * as DeveloperPlanController from '../controller/developerAdmin/DeveloperPlanController.js';
 import * as SchoolController from '../controller/school/SchoolController.js';
 import { developerAuth, refreshTokenAuth } from '../middleware/Auth.js';
 import {
@@ -190,6 +191,40 @@ developerRoutes.delete(
   developerAuth,
   checkPermission(developerRolePermissionList.school.delete),
   SchoolController.deleteSchool
+);
+//#endregion
+
+//#region Plan Management routes
+developerRoutes.post(
+  '/add-edit-plan',
+  developerAuth,
+  checkPermission(developerRolePermissionList.plan.create),
+  validator('addEditPlanSchema'),
+  DeveloperPlanController.addEditPlan
+);
+developerRoutes.get(
+  '/get-all-plans',
+  developerAuth,
+  checkPermission(developerRolePermissionList.plan.read),
+  DeveloperPlanController.getAllPlans
+);
+developerRoutes.get(
+  '/get-plan/:id',
+  developerAuth,
+  checkPermission(developerRolePermissionList.plan.read),
+  DeveloperPlanController.getPlanById
+);
+developerRoutes.delete(
+  '/delete-plan/:id',
+  developerAuth,
+  checkPermission(developerRolePermissionList.plan.delete),
+  DeveloperPlanController.deletePlan
+);
+developerRoutes.post(
+  '/plan-status/:id',
+  developerAuth,
+  checkPermission(developerRolePermissionList.plan.status),
+  DeveloperPlanController.planStatusHandler
 );
 //#endregion
 

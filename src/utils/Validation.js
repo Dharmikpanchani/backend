@@ -543,6 +543,20 @@ const getSchoolProfileSchema = joi.object({
   schoolCode: joistring.required().label('School Code'),
 });
 
+const addEditPlanSchema = joi.object({
+  id: joistring.optional().allow(''),
+  planName: joistring.required().label('Plan Name'),
+  price: joi.number().required().label('Price'),
+  billingCycle: joistring
+    .valid('monthly', 'yearly')
+    .required()
+    .label('Billing Cycle'),
+  maxStudents: joi.number().integer().min(0).required().label('Max Students'),
+  maxTeachers: joi.number().integer().min(0).required().label('Max Teachers'),
+  maxClasses: joi.number().integer().min(0).required().label('Max Classes'),
+  permissions: joi.array().items(joistring).required().label('Permissions'),
+});
+
 export default {
   adminLoginSchema,
   changePasswordSchema,
@@ -569,4 +583,5 @@ export default {
   userSendOtpSchema,
   userForgotPasswordSchema,
   userResetPasswordSchema,
+  addEditPlanSchema,
 };

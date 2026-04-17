@@ -201,6 +201,7 @@ export const getAllAdmins = async (req, res) => {
       isVerified,
       isLogin,
       role,
+      filterType,
     } = req?.query || {};
 
     const extraFilters = {
@@ -208,8 +209,8 @@ export const getAllAdmins = async (req, res) => {
     };
 
     const result = await queryBuilder(Admin, {
-      pageNumber,
-      perPageData,
+      pageNumber: filterType ? 1 : pageNumber,
+      perPageData: filterType ? Number.MAX_SAFE_INTEGER : perPageData,
       searchRequest,
 
       searchableFields: ['name', 'email', 'phoneNumber', 'address'],
@@ -228,10 +229,13 @@ export const getAllAdmins = async (req, res) => {
       populate: [{ path: 'role', select: 'role isActive' }],
     });
 
-    const data = {
-      pagination: result.pagination,
-      data: result.data,
-    };
+    const data = filterType
+      ? { data: result.data }
+      : {
+        pagination: result.pagination,
+        data: result.data,
+      };
+
     return ResponseHandler(res, 200, responseMessage.ADMIN_FETCH_SUCCESS, data);
   } catch (error) {
     logger.error(error);

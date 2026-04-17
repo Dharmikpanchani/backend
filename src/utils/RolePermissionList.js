@@ -28,6 +28,13 @@ export const developerRolePermissionList = {
     delete: 'user_delete',
     status: 'user_status',
   },
+  plan: {
+    create: 'plan_add',
+    update: 'plan_edit',
+    read: 'plan_view',
+    delete: 'plan_delete',
+    status: 'plan_status',
+  },
 };
 
 export const schoolAdminPermission = {

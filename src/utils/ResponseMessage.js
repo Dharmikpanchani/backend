@@ -241,4 +241,11 @@ export const responseMessage = {
   STUDENT_LOGIN_NOT_IMPLEMENTED: 'Student login is not implemented yet',
   ACCOUNT_NOT_VERIFIED:
     'Your account is not verified. OTP sent to your phone number.',
+  PLAN_ADDED: 'Plan has been added successfully.',
+  PLAN_UPDATED: 'Plan has been updated successfully.',
+  PLAN_FETCH_SUCCESS: 'Plan(s) fetched successfully.',
+  PLAN_NOT_FOUND: 'Plan not found.',
+  PLAN_DELETE_SUCCESS: 'Plan has been deleted successfully.',
+  PLAN_STATUS_UPDATED: 'Plan status has been updated successfully.',
+  PLAN_ALREADY_EXISTS: 'Plan name already exists.',
 };
