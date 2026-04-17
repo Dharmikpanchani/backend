@@ -125,9 +125,14 @@ export const getAllPlans = async (req, res) => {
       developerEmail,
       developerName,
       developerPhoneNumber,
+      planName,
     } = req.query;
 
     const baseQuery = {};
+
+    if (planName) {
+      baseQuery.planName = { $regex: planName, $options: 'i' };
+    }
 
     // 🔥 Role-based access logic
     if (req.developer.type !== config.SUPER_ADMIN) {
@@ -179,7 +184,7 @@ export const getAllPlans = async (req, res) => {
       filters: {
         isActive,
       },
-      populate: [{ path: 'adminId', select: 'name email phoneNumber' }],
+      populate: [{ path: 'adminId', select: 'name email phoneNumber image' }],
     });
 
     const data = {
