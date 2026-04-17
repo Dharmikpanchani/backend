@@ -232,9 +232,9 @@ export const getAllAdmins = async (req, res) => {
     const data = filterType
       ? { data: result.data }
       : {
-        pagination: result.pagination,
-        data: result.data,
-      };
+          pagination: result.pagination,
+          data: result.data,
+        };
 
     return ResponseHandler(res, 200, responseMessage.ADMIN_FETCH_SUCCESS, data);
   } catch (error) {

@@ -205,11 +205,12 @@ export const getPlanById = async (req, res) => {
   try {
     const { id } = req.params;
     const query = { _id: id, isDeleted: false };
-    if (req.developer.type !== config.SUPER_ADMIN) query.adminId = req.developer_id;
+    if (req.developer.type !== config.SUPER_ADMIN)
+      query.adminId = req.developer_id;
 
     const plan = await Plan.findOne(query).populate({
-      path: "adminId",
-      select: "name email phoneNumber",
+      path: 'adminId',
+      select: 'name email phoneNumber',
     });
 
     if (!plan) {
@@ -238,7 +239,8 @@ export const deletePlan = async (req, res) => {
   try {
     const { id } = req.params;
     const query = { _id: id, isDeleted: false };
-    if (req.developer.type !== config.SUPER_ADMIN) query.adminId = req.developer_id;
+    if (req.developer.type !== config.SUPER_ADMIN)
+      query.adminId = req.developer_id;
 
     const plan = await Plan.findOne(query);
 
@@ -274,7 +276,8 @@ export const planStatusHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const query = { _id: id, isDeleted: false };
-    if (req.developer.type !== config.SUPER_ADMIN) query.adminId = req.developer_id;
+    if (req.developer.type !== config.SUPER_ADMIN)
+      query.adminId = req.developer_id;
 
     const plan = await Plan.findOne(query);
 
