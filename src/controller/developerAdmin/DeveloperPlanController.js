@@ -135,7 +135,9 @@ export const getAllPlans = async (req, res) => {
     }
 
     // 🔥 Role-based access logic
-    if (req.developer.type !== config.SUPER_ADMIN) {
+    const isSuperDeveloper = req.developer.type === config.SUPER_ADMIN;
+
+    if (!isSuperDeveloper) {
       // Regular developers only see their own plans
       baseQuery.adminId = req.developer_id;
     } else if (developerId) {
@@ -210,8 +212,8 @@ export const getPlanById = async (req, res) => {
   try {
     const { id } = req.params;
     const query = { _id: id, isDeleted: false };
-    if (req.developer.type !== config.SUPER_ADMIN)
-      query.adminId = req.developer_id;
+    const isSuperDeveloper = req.developer.type === config.SUPER_ADMIN;
+    if (!isSuperDeveloper) query.adminId = req.developer_id;
 
     const plan = await Plan.findOne(query).populate({
       path: 'adminId',
@@ -244,8 +246,8 @@ export const deletePlan = async (req, res) => {
   try {
     const { id } = req.params;
     const query = { _id: id, isDeleted: false };
-    if (req.developer.type !== config.SUPER_ADMIN)
-      query.adminId = req.developer_id;
+    const isSuperDeveloper = req.developer.type === config.SUPER_ADMIN;
+    if (!isSuperDeveloper) query.adminId = req.developer_id;
 
     const plan = await Plan.findOne(query);
 
@@ -281,8 +283,8 @@ export const planStatusHandler = async (req, res) => {
   try {
     const { id } = req.params;
     const query = { _id: id, isDeleted: false };
-    if (req.developer.type !== config.SUPER_ADMIN)
-      query.adminId = req.developer_id;
+    const isSuperDeveloper = req.developer.type === config.SUPER_ADMIN;
+    if (!isSuperDeveloper) query.adminId = req.developer_id;
 
     const plan = await Plan.findOne(query);
 
