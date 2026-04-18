@@ -100,6 +100,7 @@ const SchoolSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
+      select: false,
     },
     schoolCode: {
       type: String,

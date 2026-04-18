@@ -48,7 +48,12 @@ export const login = async (req, res) => {
       type: config.SCHOOL_ADMIN,
     })
       .populate('role')
-      .populate('schoolId');
+      .populate({
+        path: 'schoolId',
+        populate: {
+          path: 'planId',
+        },
+      });
 
     if (!admin) {
       return ResponseHandler(
@@ -181,7 +186,12 @@ export const verifyOtpCommon = async (req, res) => {
         schoolId: req.school_id,
       })
         .populate('role')
-        .populate('schoolId');
+        .populate({
+          path: 'schoolId',
+          populate: {
+            path: 'planId',
+          },
+        });
 
       if (type === 'login') {
         otpNamespace = targetRecord?.isVerified ? 'admin_login' : 'admin';
@@ -560,6 +570,9 @@ export const profile = async (req, res) => {
       .populate({
         path: 'schoolId',
         select: '-referralId -__v',
+        populate: {
+          path: 'planId',
+        },
       });
 
     if (!admin) {
@@ -614,6 +627,8 @@ export const profile = async (req, res) => {
 
     const responseData = {
       ...adminObj,
+      planData: schoolId?.planId || null,
+      PlanExptyDate: schoolId?.PlanExptyDate || null,
       schoolData: { ...schoolId, theme: theme || {} },
     };
 
