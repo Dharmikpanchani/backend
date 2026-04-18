@@ -581,8 +581,9 @@ export const profile = async (req, res) => {
           const todayUnix = moment().startOf('day').unix();
 
           if (expiryDate <= sevenDaysFromNow && expiryDate >= todayUnix) {
-            const formattedExpiryDate =
-              moment.unix(expiryDate).format('DD MMMM YYYY');
+            const formattedExpiryDate = moment
+              .unix(expiryDate)
+              .format('DD MMMM YYYY');
 
             // Send Email
             await sendPlanExpiryEmail(
@@ -606,7 +607,6 @@ export const profile = async (req, res) => {
         }
       }
     }
-
 
     const adminObj = admin.toObject();
     const schoolId = adminObj.schoolId;

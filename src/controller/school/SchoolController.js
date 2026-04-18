@@ -224,7 +224,7 @@ export const addEditSchool = async (req, res) => {
         logo: req.logo || '',
         banner: req.banner || '',
         affiliationCertificate: req.affiliationCertificate || '',
-        PlanExptyDate: moment().add(1, 'month').unix()
+        PlanExptyDate: moment().add(1, 'month').unix(),
       });
 
       // ✅ 6. CREATE DEFAULT ADMIN
