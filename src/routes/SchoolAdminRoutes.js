@@ -16,7 +16,6 @@ import {
 } from '../middleware/Rbac.js';
 import { schoolAdminPermission } from '../utils/RolePermissionList.js';
 import * as SchoolController from '../controller/school/SchoolController.js';
-import * as DeveloperPlanController from '../controller/developerAdmin/DeveloperPlanController.js';
 import * as DepartmentController from '../controller/schoolAdmin/teacher/DepartmentController.js';
 import * as SubjectController from '../controller/schoolAdmin/teacher/SubjectController.js';
 import * as ClassController from '../controller/schoolAdmin/teacher/ClassController.js';
@@ -64,12 +63,6 @@ adminRoutes.get(
   adminAuth,
   schoolScope,
   SchoolController.getDeveloperWiseSchoolPlan
-);
-adminRoutes.get(
-  '/get-plan/:id',
-  adminAuth,
-  schoolScope,
-  DeveloperPlanController.getPlanById
 );
 adminRoutes.post(
   '/update-school-theme',

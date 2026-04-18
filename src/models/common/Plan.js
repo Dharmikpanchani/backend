@@ -7,9 +7,21 @@ const PlanSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
-    price: {
+    monPrice: {
       type: Number,
-      required: true,
+      default: 0,
+    },
+    monOfferPrice: {
+      type: Number,
+      default: 0,
+    },
+    yerPrice: {
+      type: Number,
+      default: 0,
+    },
+    yerOfferPrice: {
+      type: Number,
+      default: 0,
     },
     billingCycle: {
       type: String,

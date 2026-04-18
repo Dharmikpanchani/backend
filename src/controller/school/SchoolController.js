@@ -196,6 +196,8 @@ export const addEditSchool = async (req, res) => {
       const freePlan = await Plan.findOne({
         planName: { $regex: /free/i },
         isDeleted: false,
+        isActive: true,
+        billingCycle: 'monthly',
       });
 
       const newSchool = await School.create({

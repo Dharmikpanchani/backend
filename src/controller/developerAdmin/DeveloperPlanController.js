@@ -20,7 +20,10 @@ export const addEditPlan = async (req, res) => {
     const {
       id,
       planName,
-      price,
+      monPrice,
+      monOfferPrice,
+      yerPrice,
+      yerOfferPrice,
       billingCycle,
       maxStudents,
       maxTeachers,
@@ -30,7 +33,10 @@ export const addEditPlan = async (req, res) => {
 
     const payload = {
       planName,
-      price,
+      monPrice,
+      monOfferPrice,
+      yerPrice,
+      yerOfferPrice,
       billingCycle,
       maxStudents,
       maxTeachers,
@@ -56,11 +62,13 @@ export const addEditPlan = async (req, res) => {
       const duplicateQuery = isFreePlan
         ? {
             planName: { $regex: new RegExp(`^${planName.trim()}$`, 'i') },
+            billingCycle,
             isDeleted: false,
             _id: { $ne: id },
           }
         : {
-            planName,
+            planName: { $regex: new RegExp(`^${planName.trim()}$`, 'i') },
+            billingCycle,
             adminId: req.developer_id,
             isDeleted: false,
             _id: { $ne: id },
@@ -95,9 +103,15 @@ export const addEditPlan = async (req, res) => {
       const duplicateQuery = isFreePlan
         ? {
             planName: { $regex: new RegExp(`^${planName.trim()}$`, 'i') },
+            billingCycle,
             isDeleted: false,
           }
-        : { planName, adminId: req.developer_id, isDeleted: false };
+        : {
+            planName: { $regex: new RegExp(`^${planName.trim()}$`, 'i') },
+            billingCycle,
+            adminId: req.developer_id,
+            isDeleted: false,
+          };
 
       const duplicatePlan = await Plan.findOne(duplicateQuery);
       if (duplicatePlan) {
@@ -110,8 +124,8 @@ export const addEditPlan = async (req, res) => {
         );
       }
 
-      // Check if a soft-deleted plan exists with the same name, if so restore it
-      const deletedPlan = await Plan.findOne({ planName, isDeleted: true });
+      // Check if a soft-deleted plan exists with the same name and cycle, if so restore it
+      const deletedPlan = await Plan.findOne({ planName, billingCycle, isDeleted: true });
       if (deletedPlan) {
         result = await Plan.findByIdAndUpdate(
           deletedPlan._id,
