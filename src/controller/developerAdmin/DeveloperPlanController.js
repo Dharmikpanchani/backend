@@ -125,7 +125,11 @@ export const addEditPlan = async (req, res) => {
       }
 
       // Check if a soft-deleted plan exists with the same name and cycle, if so restore it
-      const deletedPlan = await Plan.findOne({ planName, billingCycle, isDeleted: true });
+      const deletedPlan = await Plan.findOne({
+        planName,
+        billingCycle,
+        isDeleted: true,
+      });
       if (deletedPlan) {
         result = await Plan.findByIdAndUpdate(
           deletedPlan._id,
