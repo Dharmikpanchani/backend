@@ -257,7 +257,7 @@ export const developerAuth = async (req, res, next) => {
     if (!developer.isLogin) {
       return ResponseHandler(
         res,
-        StatusCodes.BAD_REQUEST,
+        StatusCodes.UNAUTHORIZED,
         responseMessage.SESSION_EXPIRED
       );
     }
