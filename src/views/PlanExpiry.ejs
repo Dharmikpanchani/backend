@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plan Expiry Notification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            background-color: #dc3545;
+            color: white;
+            padding: 15px 0;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .content {
+            padding: 30px;
+            text-align: left;
+            border: 1px solid #eee;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            line-height: 1.6;
+        }
+        .expiry-date {
+            font-size: 20px;
+            font-weight: bold;
+            color: #dc3545;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #777;
+            margin-top: 20px;
+        }
+        .btn {
+            display: block;
+            width: 200px;
+            margin: 20px auto;
+            background-color: #007bff;
+            color: #ffffff !important;
+            text-decoration: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            font-size: 16px;
+            text-align: center;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            Plan Expiry Alert
+        </div>
+        <div class="content">
+            <p>Dear <%= schoolName %> Admin,</p>
+
+            <p>This is a reminder that your school management system subscription is set to expire soon.</p>
+
+            <div class="expiry-date">
+                Expiry Date: <%= expiryDate %>
+            </div>
+
+            <p>To ensure uninterrupted access to all your school management features, please renew your plan before the expiry date.</p>
+
+            <a href="#" class="btn">Renew Now</a>
+
+            <p>If you have already renewed, please ignore this message.</p>
+
+            <p>Best regards,<br>The Support Team</p>
+        </div>
+        <div class="footer">
+            &copy; 2026 School Management System. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>

@@ -96,3 +96,40 @@ export async function sendSubscriptionBaseMail(description, email) {
     };
   }
 }
+
+export async function sendPlanExpiryEmail(email, schoolName, expiryDate) {
+  try {
+    if (!email) {
+      throw new Error('No recipient email provided');
+    }
+
+    const templatePath = path.join(__dirname, '../views/PlanExpiry.ejs');
+
+    const emailTemplate = await ejs.renderFile(templatePath, {
+      schoolName,
+      expiryDate,
+    });
+
+    const mailOptions = {
+      from: config.EMAIL_FROM,
+      to: email,
+      subject: `URGENT: ${schoolName} Subscription Plan Expiring Soon`,
+      html: emailTemplate,
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    if (!info?.messageId) {
+      throw new Error('Failed to send plan expiry email');
+    }
+
+    logger.info(`Plan expiry email sent successfully to: ${email}`);
+    return { success: true, message: 'Plan expiry email sent successfully' };
+  } catch (error) {
+    logger.error(`Error sending plan expiry email: ${error}`);
+    return {
+      success: false,
+      message: 'Failed to send plan expiry email',
+      error: error.message,
+    };
+  }
+}

@@ -119,6 +119,10 @@ const SchoolSchema = new mongoose.Schema(
       type: Number,
       default: null,
     },
+    lastExpiryNotificationDate: {
+      type: String,
+      default: null,
+    },
     isVerified: {
       type: Boolean,
       default: false,

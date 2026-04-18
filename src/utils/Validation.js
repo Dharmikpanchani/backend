@@ -546,7 +546,14 @@ const getSchoolProfileSchema = joi.object({
 const addEditPlanSchema = joi.object({
   id: joistring.optional().allow(''),
   planName: joistring.required().label('Plan Name'),
-  price: joi.number().required().label('Price'),
+  price: joi.number()
+    .empty('')
+    .when('planName', {
+      is: joi.string().pattern(/^free$/i).required(),
+      then: joi.optional().default(0),
+      otherwise: joi.required(),
+    })
+    .label('Price'),
   billingCycle: joistring
     .valid('monthly', 'yearly')
     .required()

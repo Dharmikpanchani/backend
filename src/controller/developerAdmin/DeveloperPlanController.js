@@ -51,17 +51,29 @@ export const addEditPlan = async (req, res) => {
         );
       }
 
-      // Check for duplicate name in other plans
-      const duplicatePlan = await Plan.findOne({
-        _id: { $ne: id },
-        planName,
-        isDeleted: false,
-      });
+      // Check for duplicate name
+      const isFreePlan = /^free$/i.test(planName.trim());
+      const duplicateQuery = isFreePlan
+        ? {
+            planName: { $regex: new RegExp(`^${planName.trim()}$`, 'i') },
+            isDeleted: false,
+            _id: { $ne: id },
+          }
+        : {
+            planName,
+            adminId: req.developer_id,
+            isDeleted: false,
+            _id: { $ne: id },
+          };
+
+      const duplicatePlan = await Plan.findOne(duplicateQuery);
       if (duplicatePlan) {
         return ResponseHandler(
           res,
           StatusCodes.CONFLICT,
-          responseMessage.PLAN_ALREADY_EXISTS
+          isFreePlan
+            ? 'A Free plan already exists globally.'
+            : responseMessage.PLAN_ALREADY_EXISTS
         );
       }
 
@@ -78,12 +90,23 @@ export const addEditPlan = async (req, res) => {
       );
     } else {
       // Create new plan
-      const duplicatePlan = await Plan.findOne({ planName, isDeleted: false });
+      // Check for duplicate name
+      const isFreePlan = /^free$/i.test(planName.trim());
+      const duplicateQuery = isFreePlan
+        ? {
+            planName: { $regex: new RegExp(`^${planName.trim()}$`, 'i') },
+            isDeleted: false,
+          }
+        : { planName, adminId: req.developer_id, isDeleted: false };
+
+      const duplicatePlan = await Plan.findOne(duplicateQuery);
       if (duplicatePlan) {
         return ResponseHandler(
           res,
           StatusCodes.CONFLICT,
-          responseMessage.PLAN_ALREADY_EXISTS
+          isFreePlan
+            ? 'A Free plan already exists globally.'
+            : responseMessage.PLAN_ALREADY_EXISTS
         );
       }
 

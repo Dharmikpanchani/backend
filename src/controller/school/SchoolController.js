@@ -192,6 +192,12 @@ export const addEditSchool = async (req, res) => {
         );
       }
 
+      // 5. Find a "Free" plan from the developer
+      const freePlan = await Plan.findOne({
+        planName: { $regex: /free/i },
+        isDeleted: false,
+      });
+
       const newSchool = await School.create({
         schoolName,
         ownerName,
@@ -200,6 +206,7 @@ export const addEditSchool = async (req, res) => {
         schoolCode,
         password: schoolPassword,
         referralId: req.developer_id,
+        planId: freePlan ? freePlan._id : null,
         address,
         city,
         state,
@@ -217,7 +224,7 @@ export const addEditSchool = async (req, res) => {
         logo: req.logo || '',
         banner: req.banner || '',
         affiliationCertificate: req.affiliationCertificate || '',
-        PlanExptyDate: moment().add(30, 'days').unix(),
+        PlanExptyDate: moment().add(1, 'month').unix()
       });
 
       // ✅ 6. CREATE DEFAULT ADMIN
@@ -262,7 +269,7 @@ export const addEditSchool = async (req, res) => {
 //#region Profile GET/UPDATE (for School Admin Portal)
 export const getProfile = async (req, res) => {
   try {
-    const school = await School.findById(req.school_id);
+    const school = await School.findById(req.school_id).populate('planId');
     if (!school) {
       return ResponseHandler(
         res,
@@ -295,6 +302,8 @@ export const getProfile = async (req, res) => {
       banner: school.banner,
       affiliationCertificate: school.affiliationCertificate,
       isActive: school.isActive,
+      PlanExptyDate: school.PlanExptyDate,
+      planData: school.planId,
     };
 
     return ResponseHandler(

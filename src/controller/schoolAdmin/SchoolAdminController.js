@@ -1,6 +1,8 @@
 import SchoolTheme from '../../models/school/SchoolTheme.js';
 import Teacher from '../../models/teacher/Teacher.js';
 import User from '../../models/user/User.js';
+import School from '../../models/school/School.js';
+import moment from 'moment';
 import * as SmsService from '../../services/SmsService.js';
 import Admin from '../../models/common/Admin.js';
 import { responseMessage } from '../../utils/ResponseMessage.js';
@@ -15,6 +17,7 @@ import { StatusCodes } from 'http-status-codes';
 import {
   forgotPasswordOtpMail,
   sendRegisterVerificationEmail,
+  sendPlanExpiryEmail,
 } from '../../services/EmailServices.js';
 import Logger from '../../utils/Logger.js';
 import {
@@ -566,6 +569,44 @@ export const profile = async (req, res) => {
         responseMessage.ADMIN_NOT_FOUND
       );
     }
+
+    // 🔥 Plan Expiry Notification Logic
+    if (admin.isSuperAdmin && admin.schoolId) {
+      const school = admin.schoolId;
+      const expiryDate = school.PlanExptyDate; // Unix timestamp in seconds
+      if (expiryDate) {
+        const todayStr = moment().format('YYYY-MM-DD');
+        if (school.lastExpiryNotificationDate !== todayStr) {
+          const sevenDaysFromNow = moment().add(7, 'days').endOf('day').unix();
+          const todayUnix = moment().startOf('day').unix();
+
+          if (expiryDate <= sevenDaysFromNow && expiryDate >= todayUnix) {
+            const formattedExpiryDate =
+              moment.unix(expiryDate).format('DD MMMM YYYY');
+
+            // Send Email
+            await sendPlanExpiryEmail(
+              admin.email,
+              school.schoolName,
+              formattedExpiryDate
+            ).catch((err) => logger.error('Email error:', err));
+
+            // Send SMS
+            const smsMessage = `Your school subscription (${school.schoolName}) is expiring on ${formattedExpiryDate}. Please renew soon.`;
+            await SmsService.sendSms(
+              admin.phoneNumber || school.phoneNumber,
+              smsMessage
+            ).catch((err) => logger.error('SMS error:', err));
+
+            // Update school record to track notification sent today
+            await School.findByIdAndUpdate(school._id, {
+              lastExpiryNotificationDate: todayStr,
+            });
+          }
+        }
+      }
+    }
+
 
     const adminObj = admin.toObject();
     const schoolId = adminObj.schoolId;
