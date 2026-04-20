@@ -68,9 +68,9 @@ export const checkPermission = (requiredPermission) => {
       // 🔹 Check Plan Based Permission if school context exists
       if (req.school_id) {
         if (!req.school) {
-          req.school = await School.findById(req.school_id).populate("planId");
-        } else if (!req.school.populated("planId")) {
-          await req.school.populate("planId");
+          req.school = await School.findById(req.school_id).populate('planId');
+        } else if (!req.school.populated('planId')) {
+          await req.school.populate('planId');
         }
 
         const planPermissions = req.school?.planId?.permissions || [];
@@ -169,7 +169,7 @@ export const checkRoleInUse = async (req, res, next) => {
         res,
         StatusCodes.CONFLICT,
         responseMessage.ROLE_IS_ASSIGNED_TO_ADMINS ||
-        'Role is assigned to admins'
+          'Role is assigned to admins'
       );
     }
 
@@ -252,7 +252,7 @@ export const checkRecordInUse = (checkConfigs) => {
             res,
             StatusCodes.CONFLICT,
             config.message ||
-            'Record is currently in use and cannot be modified or deleted.'
+              'Record is currently in use and cannot be modified or deleted.'
           );
         }
       }
