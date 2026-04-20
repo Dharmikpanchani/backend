@@ -136,6 +136,10 @@ const SchoolSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    planStatus: {
+      type: Boolean,
+      default: true,
+    },
   },
   { timestamps: true }
 );

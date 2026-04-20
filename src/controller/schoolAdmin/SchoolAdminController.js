@@ -583,11 +583,23 @@ export const profile = async (req, res) => {
       );
     }
 
-    // 🔥 Plan Expiry Notification Logic
-    if (admin.isSuperAdmin && admin.schoolId) {
+    // 🔥 Plan Expiry & Status Update Logic
+    if (admin.schoolId) {
       const school = admin.schoolId;
-      const expiryDate = school.PlanExptyDate; // Unix timestamp in seconds
-      if (expiryDate) {
+      const expiryDate = school.PlanExptyDate;
+      const currentTime = moment().unix();
+
+      const newPlanStatus = expiryDate ? currentTime <= expiryDate : true;
+
+      if (school.planStatus !== newPlanStatus) {
+        await School.findByIdAndUpdate(school._id, {
+          planStatus: newPlanStatus,
+        });
+        school.planStatus = newPlanStatus;
+      }
+
+      // Notification Logic (Super Admin only)
+      if (admin.isSuperAdmin && expiryDate) {
         const todayStr = moment().format('YYYY-MM-DD');
         if (school.lastExpiryNotificationDate !== todayStr) {
           const sevenDaysFromNow = moment().add(7, 'days').endOf('day').unix();

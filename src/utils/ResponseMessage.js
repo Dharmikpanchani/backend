@@ -250,4 +250,8 @@ export const responseMessage = {
   PLAN_ALREADY_EXISTS: 'Plan name already exists with this cycle.',
   SCHOOL_PLAN_DATA_FETCHED:
     'Developer wise school plan data fetched successfully',
+  PLAN_PERMISSION_DENIED:
+    "Your school's subscription plan does not include this feature. Please upgrade your plan.",
+  PLAN_VIOLATION_BLOCKED:
+    'Access temporarily suspended for 3 hours due to repeated unauthorized access attempts.',
 };

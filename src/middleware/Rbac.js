@@ -12,6 +12,8 @@ import Logger from '../utils/Logger.js';
 import config from '../config/Index.js';
 const logger = new Logger('Rbac.js');
 
+import redis from '../config/Redis.config.js';
+
 //#region Check Permission Middleware
 /**
  * Middleware to check if the user/admin has the required permission
@@ -35,12 +37,75 @@ export const checkPermission = (requiredPermission) => {
         );
       }
 
+      // Identifier for rate limiting/blocking (use Admin/User ID)
+      const userId = userOrAdmin._id?.toString();
+
+      // 🔹 Check if user is temporarily blocked due to repeated plan violations
+      if (userId) {
+        try {
+          const isBlocked = await redis.get(`plan_blocked:${userId}`);
+          if (isBlocked) {
+            return ResponseHandler(
+              res,
+              StatusCodes.FORBIDDEN,
+              responseMessage.PLAN_VIOLATION_BLOCKED
+            );
+          }
+        } catch (error) {
+          logger.warn(`Redis block check failed: ${error.message}`);
+        }
+      }
+
       // If user is a super admin or super developer, bypass checks
       if (
         userOrAdmin?.type == config.SUPER_ADMIN ||
-        userOrAdmin?.isSuperAdmin
+        userOrAdmin?.isSuperAdmin ||
+        req.developer
       ) {
         return next();
+      }
+
+      // 🔹 Check Plan Based Permission if school context exists
+      if (req.school_id) {
+        if (!req.school) {
+          req.school = await School.findById(req.school_id).populate("planId");
+        } else if (!req.school.populated("planId")) {
+          await req.school.populate("planId");
+        }
+
+        const planPermissions = req.school?.planId?.permissions || [];
+        if (!planPermissions.includes(requiredPermission)) {
+          // 🔹 Record Violation
+          if (userId) {
+            try {
+              const violations = await redis.incr(`plan_violations:${userId}`);
+              if (violations === 1) {
+                // Set TTL for violations counter (24 hours window to hit the limit)
+                await redis.expire(`plan_violations:${userId}`, 86400);
+              }
+
+              if (violations >= 15) {
+                // Block user for 3 hours (10800 seconds)
+                await redis.set(`plan_blocked:${userId}`, 'true', 'EX', 10800);
+                await redis.del(`plan_violations:${userId}`);
+
+                return ResponseHandler(
+                  res,
+                  StatusCodes.FORBIDDEN,
+                  responseMessage.PLAN_VIOLATION_BLOCKED
+                );
+              }
+            } catch (error) {
+              logger.warn(`Redis violation tracking failed: ${error.message}`);
+            }
+          }
+
+          return ResponseHandler(
+            res,
+            StatusCodes.FORBIDDEN,
+            responseMessage.PLAN_PERMISSION_DENIED
+          );
+        }
       }
 
       // Populate Role if not already populated
@@ -104,7 +169,7 @@ export const checkRoleInUse = async (req, res, next) => {
         res,
         StatusCodes.CONFLICT,
         responseMessage.ROLE_IS_ASSIGNED_TO_ADMINS ||
-          'Role is assigned to admins'
+        'Role is assigned to admins'
       );
     }
 
@@ -187,7 +252,7 @@ export const checkRecordInUse = (checkConfigs) => {
             res,
             StatusCodes.CONFLICT,
             config.message ||
-              'Record is currently in use and cannot be modified or deleted.'
+            'Record is currently in use and cannot be modified or deleted.'
           );
         }
       }

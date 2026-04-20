@@ -25,9 +25,6 @@ export const addEditPlan = async (req, res) => {
       yerPrice,
       yerOfferPrice,
       billingCycle,
-      maxStudents,
-      maxTeachers,
-      maxClasses,
       permissions,
     } = req.body;
 
@@ -38,9 +35,6 @@ export const addEditPlan = async (req, res) => {
       yerPrice,
       yerOfferPrice,
       billingCycle,
-      maxStudents,
-      maxTeachers,
-      maxClasses,
       permissions,
       adminId: req.developer_id, // Track which developer managed this plan
     };

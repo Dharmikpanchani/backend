@@ -28,18 +28,6 @@ const PlanSchema = new mongoose.Schema(
       enum: ['monthly', 'yearly'],
       required: true,
     },
-    maxStudents: {
-      type: Number,
-      required: true,
-    },
-    maxTeachers: {
-      type: Number,
-      required: true,
-    },
-    maxClasses: {
-      type: Number,
-      required: true,
-    },
     permissions: [
       {
         type: String,

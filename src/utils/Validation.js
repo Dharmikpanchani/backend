@@ -576,9 +576,6 @@ const addEditPlanSchema = joi.object({
     .valid('monthly', 'yearly')
     .required()
     .label('Billing Cycle'),
-  maxStudents: joi.number().integer().min(0).required().label('Max Students'),
-  maxTeachers: joi.number().integer().min(0).required().label('Max Teachers'),
-  maxClasses: joi.number().integer().min(0).required().label('Max Classes'),
   permissions: joi.array().items(joistring).required().label('Permissions'),
 });
 

@@ -417,6 +417,9 @@ export const getAllSchools = async (req, res) => {
       board,
       schoolType,
       referralId,
+      adminId,
+      planStatus,
+      planName,
       schoolCode,
       panNumber,
       gstNumber,
@@ -431,7 +434,8 @@ export const getAllSchools = async (req, res) => {
       isVerified,
       board,
       schoolType,
-      referralId,
+      referralId: adminId || referralId,
+      planStatus,
       schoolCode,
       panNumber,
       gstNumber,
@@ -439,6 +443,21 @@ export const getAllSchools = async (req, res) => {
       establishedYear,
       isDeleted: false,
     };
+
+    // If planName filter is provided, find matching plan IDs
+    if (planName) {
+      const matchingPlans = await Plan.find({
+        planName: { $regex: planName, $options: 'i' },
+        isDeleted: false,
+      }).select('_id');
+
+      if (matchingPlans.length > 0) {
+        filters.planId = { $in: matchingPlans.map((p) => p._id) };
+      } else {
+        // Force no results if planName specified but no plans match
+        filters.planId = '000000000000000000000000';
+      }
+    }
 
     // Clean up filters
     Object.keys(filters).forEach((key) => {
@@ -499,7 +518,10 @@ export const getAllSchools = async (req, res) => {
       ],
       extraOrConditions,
       filters,
-      populate: [{ path: 'referralId', select: 'name email phoneNumber' }],
+      populate: [
+        { path: 'referralId', select: 'name email phoneNumber' },
+        { path: 'planId' },
+      ],
     });
 
     const data = {

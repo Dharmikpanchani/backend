@@ -8,7 +8,8 @@
     "start": "server.js",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "dev": "nodemon server.js",
+    "redis": "cd redisServer && redis-server.exe",
+    "dev": "concurrently --names \"REDIS,SERVER\" --prefix-colors \"bgRed.bold,bgBlue.bold\" \"npm run redis\" \"nodemon server.js\"",
     "prepare": "husky",
     "precommit": "eslint ."
   },
@@ -52,6 +53,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.23.0",
+    "concurrently": "^9.2.1",
     "eslint": "^9.23.0",
     "globals": "^16.0.0",
     "husky": "^9.1.7",
