@@ -270,7 +270,12 @@ export const getAdminById = async (req, res) => {
     const admin = await Admin.findOne({
       _id: id,
       isDeleted: false,
-    }).populate({ path: 'role', select: 'role isActive' });
+    })
+      .populate({ path: 'role', select: 'role isActive' })
+      .populate({
+        path: 'schoolId',
+        populate: { path: 'planId' },
+      });
 
     if (!admin) {
       return ResponseHandler(
@@ -308,6 +313,7 @@ export const getAdminById = async (req, res) => {
           registrationNumber,
           establishedYear,
         },
+        populate: [{ path: 'planId' }],
       });
 
       adminData.schools = result.data;

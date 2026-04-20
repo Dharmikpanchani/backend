@@ -133,7 +133,7 @@ export const addEditSchool = async (req, res) => {
 
       const updatedSchool = await School.findByIdAndUpdate(id, updateData, {
         new: true,
-      });
+      }).populate('planId');
 
       return ResponseHandler(
         res,
@@ -546,7 +546,10 @@ export const getAllSchools = async (req, res) => {
 export const getSchoolById = async (req, res) => {
   try {
     const { schoolId } = req.params;
-    const data = await School.findOne({ _id: schoolId, isDeleted: false });
+    const data = await School.findOne({
+      _id: schoolId,
+      isDeleted: false,
+    }).populate('planId');
     if (!data) {
       return ResponseHandler(
         res,
