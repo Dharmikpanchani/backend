@@ -11,10 +11,7 @@ import {
   queryBuilder,
 } from '../../services/CommonServices.js';
 import Logger from '../../utils/Logger.js';
-import {
-  storeOtp,
-  checkOtpRateLimit,
-} from '../../services/OtpService.js';
+import { storeOtp, checkOtpRateLimit } from '../../services/OtpService.js';
 import { sendRegisterVerificationEmail } from '../../services/EmailServices.js'; // Can be reused for OTP or make a specific one
 
 import { responseMessage } from '../../utils/ResponseMessage.js';
