@@ -136,7 +136,7 @@ const SchoolSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    planStatus: {
+    isActivePlan: {
       type: Boolean,
       default: true,
     },

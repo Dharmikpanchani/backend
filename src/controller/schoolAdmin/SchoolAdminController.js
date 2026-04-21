@@ -592,11 +592,11 @@ export const profile = async (req, res) => {
 
       const newPlanStatus = expiryDate ? currentTime <= expiryDate : true;
 
-      if (school.planStatus !== newPlanStatus) {
+      if (school.isActivePlan !== newPlanStatus) {
         await School.findByIdAndUpdate(school._id, {
-          planStatus: newPlanStatus,
+          isActivePlan: newPlanStatus,
         });
-        school.planStatus = newPlanStatus;
+        school.isActivePlan = newPlanStatus;
       }
 
       // Notification Logic (Super Admin only)
