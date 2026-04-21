@@ -14,7 +14,6 @@ import {
 } from '../../services/EmailServices.js';
 import Logger from '../../utils/Logger.js';
 import {
-  // generateOtp,
   storeOtp,
   verifyOtp,
   checkOtpRateLimit,
@@ -68,6 +67,7 @@ export const login = async (req, res) => {
           rateLimit.message
         );
       }
+      // const otp = await generateOtp();
       const otp = 444444;
       await storeOtp('developer', email, otp);
       await sendRegisterVerificationEmail(
@@ -101,6 +101,7 @@ export const login = async (req, res) => {
           rateLimit.message
         );
       }
+      // const otp = await generateOtp();
       // const otp = await generateOtp();
       const otp = 444444;
       await storeOtp('developer_login', email, otp);
@@ -710,6 +711,7 @@ export const sendOtp = async (req, res) => {
         );
       }
 
+      // const otp = await generateOtp();
       // const otp = await generateOtp();
       const otp = 444444;
       await storeOtp('admin', email, otp); // Same as registration

@@ -21,7 +21,6 @@ import {
 } from '../../services/EmailServices.js';
 import Logger from '../../utils/Logger.js';
 import {
-  // generateOtp,
   storeOtp,
   verifyOtp,
   checkOtpRateLimit,
@@ -81,7 +80,7 @@ export const login = async (req, res) => {
           rateLimit.message
         );
       }
-      // const otp = generateOtp();
+      // const otp = await generateOtp();
       const otp = 444444;
       await storeOtp('admin', email, otp);
       await sendRegisterVerificationEmail(
@@ -115,6 +114,7 @@ export const login = async (req, res) => {
           rateLimit.message
         );
       }
+      // const otp = await generateOtp();
       // const otp = await generateOtp();
       const otp = 444444;
       await storeOtp('admin_login', email, otp);
@@ -452,6 +452,7 @@ export const forgotPassword = async (req, res) => {
 
     // Generate & store OTP via Redis (same as admin creation flow)
     // const otp = await generateOtp();
+    // const otp = generateOtp();
     const otp = 444444;
     await storeOtp('admin_forgot', email, otp);
 
@@ -617,11 +618,11 @@ export const profile = async (req, res) => {
               formattedExpiryDate
             ).catch((err) => logger.error('Email error:', err));
 
-            // Send SMS
-            const smsMessage = `Your school subscription (${school.schoolName}) is expiring on ${formattedExpiryDate}. Please renew soon.`;
+            // Send Real SMS via MSG91
             await SmsService.sendSms(
               admin.phoneNumber || school.phoneNumber,
-              smsMessage
+              school.schoolName, // Parameter 1 (Company/School Name)
+              formattedExpiryDate // Parameter 2 (Expiry Date)
             ).catch((err) => logger.error('SMS error:', err));
 
             // Update school record to track notification sent today
@@ -734,6 +735,7 @@ export const changeEmailRequest = async (req, res) => {
       );
     }
 
+    // const otp = generateOtp();
     const otp = 444444;
     await storeOtp('admin_email_change', newEmail, otp);
     await sendRegisterVerificationEmail(
@@ -896,6 +898,7 @@ export const addEditAdminProfile = async (req, res) => {
 
       // Send OTP
       // const otp = await generateOtp();
+      // const otp = await generateOtp();
       const otp = 444444;
       await storeOtp('admin', email, otp);
       sendRegisterVerificationEmail(
@@ -995,6 +998,7 @@ export const sendOtp = async (req, res) => {
     }
 
     // const otp = await generateOtp();
+    // const otp = generateOtp();
     const otp = 444444;
     await storeOtp(otpNamespace, email, otp);
 

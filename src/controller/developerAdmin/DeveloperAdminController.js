@@ -81,7 +81,7 @@ export const addEditAdminProfile = async (req, res) => {
             rateLimit.message
           );
 
-        // const otpCode = generateOtp();
+        // const otpCode = await generateOtp();
         const otpCode = 444444;
         await storeOtp('admin_update', req.developer.email, otpCode);
         sendRegisterVerificationEmail(
@@ -164,7 +164,7 @@ export const addEditAdminProfile = async (req, res) => {
       }
 
       // Send OTP
-      // const otp = generateOtp();
+      // const otp = await generateOtp();
       const otp = 444444;
       await storeOtp('developer', email, otp);
       sendRegisterVerificationEmail(

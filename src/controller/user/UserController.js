@@ -184,9 +184,14 @@ export const login = async (req, res) => {
         );
       }
 
-      const otp = 444444; // Standardized for development
+      // const otp = await generateOtp();
+      const otp = 444444;
       await OtpService.storeOtp(otpNamespace, phoneNumber, otp);
-      await SmsService.sendSms(phoneNumber, `Your verification code: ${otp}`);
+      await SmsService.sendOtpSms(
+        phoneNumber,
+        otp,
+        process.env.MSG91_LOGIN_TEMPLATE_ID
+      );
 
       return ResponseHandler(
         res,
@@ -276,9 +281,14 @@ export const sendOtp = async (req, res) => {
       );
     }
 
-    const otp = 444444; // Standardized for development
+    // const otp = await generateOtp();
+    const otp = 444444;
     await OtpService.storeOtp(otpNamespace, phoneNumber, otp);
-    await SmsService.sendSms(phoneNumber, `Your verification code: ${otp}`);
+    const templateId =
+      req.body.type === 'forgotPassword'
+        ? process.env.MSG91_FORGOT_TEMPLATE_ID
+        : process.env.MSG91_LOGIN_TEMPLATE_ID;
+    await SmsService.sendOtpSms(phoneNumber, otp, templateId);
 
     return ResponseHandler(
       res,
@@ -426,11 +436,13 @@ export const forgotPassword = async (req, res) => {
       );
     }
 
-    const otp = 444444; // Standardized for development
+    // const otp = await generateOtp();
+    const otp = 444444;
     await OtpService.storeOtp(otpNamespace, phoneNumber, otp);
-    await SmsService.sendSms(
+    await SmsService.sendOtpSms(
       phoneNumber,
-      `Your forgot password verification code: ${otp}`
+      otp,
+      process.env.MSG91_FORGOT_TEMPLATE_ID
     );
 
     return ResponseHandler(
@@ -528,6 +540,97 @@ export const changePassword = async (req, res) => {
       res,
       StatusCodes.OK,
       responseMessage.PASSWORD_CHANGE_SUCCESSFULLY
+    );
+  } catch (error) {
+    return CatchErrorHandler(res, error);
+  }
+};
+export const changePhoneNumberRequest = async (req, res) => {
+  try {
+    const { password, newPhoneNumber } = req.body;
+    const userProfile = req.user;
+
+    if (!userProfile) {
+      return ResponseHandler(
+        res,
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_PROFILE_NOT_FOUND
+      );
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      userProfile.password
+    );
+    if (!isPasswordValid) {
+      return ResponseHandler(
+        res,
+        StatusCodes.BAD_REQUEST,
+        responseMessage.INVALID_PASSWORD
+      );
+    }
+
+    // Check if phone exists in the same school for any user/teacher/student
+    const phoneExists = await Teacher.findOne({
+      phoneNumber: newPhoneNumber,
+      schoolId: userProfile.schoolId,
+      isDeleted: false,
+    });
+    const studentPhoneExists = await Student.findOne({
+      phoneNumber: newPhoneNumber,
+      schoolId: userProfile.schoolId,
+      isDeleted: false,
+    });
+
+    if (phoneExists || studentPhoneExists) {
+      return ResponseHandler(
+        res,
+        StatusCodes.CONFLICT,
+        responseMessage.PHONE_NUMBER_ALREADY_EXISTS
+      );
+    }
+
+    // const otp = await generateOtp();
+    const otp = 444444;
+    await OtpService.storeOtp('user_phone_change', newPhoneNumber, otp);
+    await SmsService.sendOtpSms(
+      newPhoneNumber,
+      otp,
+      process.env.MSG91_REGISTER_TEMPLATE_ID
+    );
+
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.OTP_SENT_SUCCESSFULLY
+    );
+  } catch (error) {
+    return CatchErrorHandler(res, error);
+  }
+};
+
+export const verifyPhoneNumberChange = async (req, res) => {
+  try {
+    const { newPhoneNumber, otp } = req.body;
+    const userProfile = req.user;
+
+    const otpResult = await OtpService.verifyOtp(
+      'user_phone_change',
+      newPhoneNumber,
+      otp
+    );
+    if (!otpResult.success) {
+      return ResponseHandler(res, StatusCodes.BAD_REQUEST, otpResult.message);
+    }
+
+    // Update the phone number in the current profile
+    userProfile.phoneNumber = newPhoneNumber;
+    await userProfile.save();
+
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.PHONE_NUMBER_UPDATED_SUCCESSFULLY
     );
   } catch (error) {
     return CatchErrorHandler(res, error);

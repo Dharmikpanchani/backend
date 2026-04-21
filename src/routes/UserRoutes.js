@@ -66,4 +66,18 @@ userRoutes.post(
   UserController.changePassword
 );
 
+userRoutes.post(
+  '/change-phone-request',
+  userAuth,
+  schoolScope,
+  UserController.changePhoneNumberRequest
+);
+
+userRoutes.post(
+  '/verify-phone-change',
+  userAuth,
+  schoolScope,
+  UserController.verifyPhoneNumberChange
+);
+
 export default userRoutes;

@@ -316,9 +316,14 @@ export const addEditTeacher = async (req, res) => {
         );
       }
 
-      const otp = 444444; // Standardized for development
+      // const otp = await generateOtp();
+      const otp = 444444;
       await OtpService.storeOtp('teacher', phoneNumber, otp);
-      await SmsService.sendSms(phoneNumber, `Your verification code: ${otp}`);
+      await SmsService.sendOtpSms(
+        phoneNumber,
+        otp,
+        process.env.MSG91_REGISTER_TEMPLATE_ID
+      );
 
       return ResponseHandler(
         res,

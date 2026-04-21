@@ -12,7 +12,6 @@ import {
 } from '../../services/CommonServices.js';
 import Logger from '../../utils/Logger.js';
 import {
-  // generateOtp,
   storeOtp,
   checkOtpRateLimit,
 } from '../../services/OtpService.js';
@@ -241,6 +240,7 @@ export const addEditSchool = async (req, res) => {
       });
 
       // 8. OTP for Admin
+      // const otp = await generateOtp();
       const otp = 444444;
       await storeOtp('admin', newAdmin.email, otp);
 

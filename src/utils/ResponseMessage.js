@@ -152,6 +152,7 @@ export const responseMessage = {
   EMAIL_CHANGE_OTP_SENT: 'OTP sent to your new email address.',
   EMAIL_UPDATED_SUCCESSFULLY: 'Email updated successfully.',
   INVALID_PASSWORD: 'Invalid password.',
+  PHONE_NUMBER_UPDATED_SUCCESSFULLY: 'Phone number updated successfully.',
   ADMIN_IN_USE:
     'Admin is assigned to a school. Please remove the school first.',
   SUPER_ADMIN_CANNOT_BE_DELETED: 'Super Admin cannot be deleted.',
