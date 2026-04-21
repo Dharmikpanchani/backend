@@ -1,5 +1,4 @@
 import { StatusCodes } from 'http-status-codes';
-import moment from 'moment';
 import School from '../../models/school/School.js';
 import SchoolTheme from '../../models/school/SchoolTheme.js';
 import Plan from '../../models/common/Plan.js';
@@ -222,7 +221,7 @@ export const addEditSchool = async (req, res) => {
         logo: req.logo || '',
         banner: req.banner || '',
         affiliationCertificate: req.affiliationCertificate || '',
-        PlanExptyDate: moment().add(1, 'month').unix(),
+        PlanExptyDate: config.FIRST_PLAN_EXPIRY(),
       });
 
       // ✅ 6. CREATE DEFAULT ADMIN

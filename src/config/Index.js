@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import moment from 'moment';
 dotenv.config();
 
 const config = {
@@ -24,6 +25,8 @@ const config = {
   SCHOOL_ADMIN: 'school_admin',
   TEACHER: 'teacher',
   STUDENT: 'student',
+  // FIRST_PLAN_EXPIRY: () => moment().add(1, 'month').unix(),
+  FIRST_PLAN_EXPIRY: () => moment().add(1, 'hour').unix(),
 };
 
 export default config;
