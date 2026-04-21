@@ -40,6 +40,10 @@ const AdminSchema = new mongoose.Schema(
       ref: 'School',
       default: null,
     },
+    UPIId: {
+      type: String,
+      default: null,
+    },
 
     otp: Number,
     otpExpireAt: Date,

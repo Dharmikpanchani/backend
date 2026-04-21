@@ -7,6 +7,7 @@ paymentRoutes.post('/create-order', PaymentController.createOrder);
 paymentRoutes.post('/verify', PaymentController.verifyPayment);
 paymentRoutes.post('/webhook', PaymentController.razorpayWebhook);
 paymentRoutes.get('/transactions', PaymentController.getTransactions);
+paymentRoutes.post('/pay-salary', PaymentController.payTeacherSalary);
 
 export default paymentRoutes;
 

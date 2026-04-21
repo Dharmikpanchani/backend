@@ -103,6 +103,21 @@ const PaymentTransactionSchema = new mongoose.Schema(
       default: null, // upi, card, netbanking, wallet
     },
 
+    type: {
+      type: String,
+      enum: ['SUBSCRIPTION', 'FEES', 'SALARY'],
+      default: 'SUBSCRIPTION',
+    },
+    referralId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Admin',
+      default: null,
+    },
+    commissionAmount: {
+      type: Number,
+      default: 0,
+    },
+
     // ================= SUBSCRIPTION =================
     startDate: {
       type: Date,
@@ -112,7 +127,6 @@ const PaymentTransactionSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-
     // ================= ERROR =================
     errorMessage: {
       type: String,

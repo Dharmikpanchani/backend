@@ -1,6 +1,9 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import PaymentTransaction from '../models/PaymentTransaction.js';
+import School from '../models/school/School.js';
+import Teacher from '../models/teacher/Teacher.js';
+import Payout from '../models/Payout.js';
 import {
   ResponseHandler,
   CatchErrorHandler,
@@ -17,9 +20,6 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-let defaultReferralUpiId = process.env.DEFAULTREFL_UPI_ID;
-let contactsUrl = process.env.CONTACTS_URL;
-let fundAccountsUrl = process.env.FUND_ACCOUNTS;
 let payoutsUrl = process.env.PAYOUTS_URL;
 
 //#region Create Order
@@ -31,7 +31,7 @@ export const createOrder = async (req, res) => {
       schoolId,
       userId,
       planId,
-      referralUpiId = defaultReferralUpiId,
+      type = 'SUBSCRIPTION', // SUBSCRIPTION | FEES
     } = req.body;
 
     if (!amount) {
@@ -42,8 +42,19 @@ export const createOrder = async (req, res) => {
       );
     }
 
+    // Fetch school to get referral details if subscription
+    let referralId = null;
+    let referralUpiId = null;
+    if (schoolId) {
+      const school = await School.findById(schoolId).populate('referralId');
+      if (school && school.referralId) {
+        referralId = school.referralId._id;
+        referralUpiId = school.referralId.UPIId;
+      }
+    }
+
     const order = await razorpay.orders.create({
-      amount: amount * 100,
+      amount: Math.round(amount * 100),
       currency,
       receipt: `receipt_${Date.now()}`,
     });
@@ -53,14 +64,16 @@ export const createOrder = async (req, res) => {
       userId,
       planId,
       amount,
-      totalAmount: amount, // set total Amount
+      totalAmount: amount,
       currency,
       status: 'pending',
-      userPaymentStatus: 'pending',
-      referralPaymentStatus: referralUpiId ? 'pending' : null,
-      adminPaymentStatus: 'pending',
-      referralUpiId: referralUpiId || null,
+      type,
+      referralId,
+      referralUpiId,
       razorpayOrderId: order.id,
+      userPaymentStatus: 'pending',
+      referralPaymentStatus: referralId ? 'pending' : null,
+      adminPaymentStatus: 'pending',
     });
 
     return ResponseHandler(res, StatusCodes.CREATED, responseMessage.SUCCESS, {
@@ -119,7 +132,6 @@ export const verifyPayment = async (req, res) => {
 //#region Webhook
 export const razorpayWebhook = async (req, res) => {
   try {
-    // ================= VERIFY SIGNATURE =================
     const signature = req.headers['x-razorpay-signature'];
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
@@ -144,7 +156,6 @@ export const razorpayWebhook = async (req, res) => {
     const event = data.event;
     const payment = data.payload.payment.entity;
 
-    // ================= FIND TRANSACTION =================
     const transaction = await PaymentTransaction.findOne({
       razorpayOrderId: payment.order_id,
     });
@@ -157,7 +168,6 @@ export const razorpayWebhook = async (req, res) => {
       );
     }
 
-    // ================= DUPLICATE WEBHOOK PROTECTION =================
     if (event === 'payment.captured' && transaction.status === 'success') {
       return ResponseHandler(
         res,
@@ -166,8 +176,7 @@ export const razorpayWebhook = async (req, res) => {
       );
     }
 
-    // ================= PAYMENT SUCCESS =================
-    if (event === 'payment.captured') {
+    if (event === 'payment.captured' || event === 'order.paid') {
       transaction.status = 'success';
       transaction.userPaymentStatus = 'success';
       transaction.transactionId = payment.id;
@@ -178,112 +187,53 @@ export const razorpayWebhook = async (req, res) => {
       const amount = transaction.amount;
       transaction.totalAmount = amount;
 
-      // Commission calculation
-      let referralAmount = 0;
-      let adminAmount = amount;
+      // ================= COMMISSION LOGIC (20% to Referral) =================
+      if (transaction.type === 'SUBSCRIPTION' && transaction.referralId) {
+        const referralCommission = Math.round(amount * 0.2); // 20% commission
+        const platformRevenue = amount - referralCommission;
 
-      if (transaction.referralUpiId) {
-        referralAmount = Math.round(amount * 0.3);
-        adminAmount = amount - referralAmount;
-
-        transaction.referralAmount = referralAmount;
-        transaction.adminAmount = adminAmount;
+        transaction.commissionAmount = referralCommission;
+        transaction.adminAmount = platformRevenue;
+        transaction.referralAmount = referralCommission;
         transaction.referralPaymentStatus = 'processing';
+
+        // Fetch referral name from School/Admin
+        let referralName = 'Referral Developer';
+        const schoolData = await School.findOne({
+          referralId: transaction.referralId,
+        }).populate('referralId');
+        if (schoolData && schoolData.referralId) {
+          referralName = schoolData.referralId.name || referralName;
+        }
+
+        // Trigger Payout for Referral
+        await triggerPayout({
+          transactionId: transaction._id,
+          receiverType: 'REFERRAL',
+          receiverId: transaction.referralId,
+          upiId: transaction.referralUpiId,
+          amount: referralCommission,
+          name: referralName,
+        });
       } else {
         transaction.adminAmount = amount;
       }
 
-      // Razorpay settlement later
-      transaction.adminPaymentStatus = 'settlement_pending';
-
-      // Subscription start/end (30 days example)
-      const days = 30;
-      transaction.startDate = new Date();
-      transaction.endDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+      // ================= FEES PAYMENT LOGIC =================
+      if (transaction.type === 'FEES') {
+        // Platform collects full amount, to be settled to school later
+        // Optionally trigger payout to school here or manually
+        transaction.adminPaymentStatus = 'received';
+      }
 
       await transaction.save();
-
-      // ================= REFERRAL PAYOUT =================
-      if (
-        transaction.referralUpiId &&
-        transaction.referralPaymentStatus !== 'sent'
-      ) {
-        try {
-          const authHeader =
-            'Basic ' +
-            Buffer.from(
-              `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
-            ).toString('base64');
-
-          const headers = {
-            'Content-Type': 'application/json',
-            Authorization: authHeader,
-          };
-
-          // Create Contact
-          const contactRes = await fetch(contactsUrl, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              name: 'Referral User',
-              type: 'employee',
-            }),
-          });
-          const contactData = await contactRes.json();
-          if (contactData.error) throw new Error(contactData.error.description);
-
-          // Create Fund Account
-          const fundRes = await fetch(fundAccountsUrl, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              contact_id: contactData.id,
-              account_type: 'vpa',
-              vpa: {
-                address: transaction.referralUpiId,
-              },
-            }),
-          });
-          const fundData = await fundRes.json();
-          if (fundData.error) throw new Error(fundData.error.description);
-
-          // Create Payout
-          const payoutRes = await fetch(payoutsUrl, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              account_number: process.env.RAZORPAY_ACCOUNT_NUMBER,
-              fund_account_id: fundData.id,
-              amount: referralAmount * 100,
-              currency: 'INR',
-              mode: 'UPI',
-              purpose: 'commission',
-            }),
-          });
-          const payoutData = await payoutRes.json();
-          if (payoutData.error) throw new Error(payoutData.error.description);
-
-          transaction.referralPaymentStatus = 'sent';
-          transaction.referralPayoutId = payoutData.id;
-        } catch (error) {
-          logger.error('Referral payout failed:', error.message);
-          transaction.referralPaymentStatus = 'failed';
-        }
-
-        await transaction.save();
-      }
     }
 
-    // ================= PAYMENT FAILED =================
     if (event === 'payment.failed') {
       transaction.status = 'failed';
       transaction.userPaymentStatus = 'failed';
       transaction.adminPaymentStatus = 'failed';
-
-      if (transaction.referralUpiId) {
-        transaction.referralPaymentStatus = 'failed';
-      }
-
+      if (transaction.referralId) transaction.referralPaymentStatus = 'failed';
       transaction.errorMessage = payment.error_description;
       transaction.webhookData = data;
       await transaction.save();
@@ -295,6 +245,140 @@ export const razorpayWebhook = async (req, res) => {
     return CatchErrorHandler(res, error);
   }
 };
+
+// Internal Helper function to trigger Razorpay Payouts
+const triggerPayout = async ({
+  transactionId,
+  receiverType,
+  receiverId,
+  upiId,
+  amount,
+  name = 'User',
+}) => {
+  try {
+    const authHeader =
+      'Basic ' +
+      Buffer.from(
+        `${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`
+      ).toString('base64');
+
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: authHeader,
+    };
+
+    // Create a record in Payouts table
+    const payoutRecord = await Payout.create({
+      transactionId,
+      receiverType,
+      receiverId,
+      upiId,
+      amount,
+      status: 'pending',
+    });
+
+    // ================= COMPOSITE PAYOUT (Single API Call) =================
+    // This flow combines Contact + Fund Account + Payout creation
+    const payoutPayload = {
+      account_number: process.env.RAZORPAY_ACCOUNT_NUMBER,
+      amount: Math.round(amount * 100), // in paise
+      currency: 'INR',
+      mode: 'UPI',
+      purpose: receiverType === 'REFERRAL' ? 'commission' : 'salary',
+      fund_account: {
+        account_type: 'vpa',
+        vpa: { address: upiId },
+        contact: {
+          name: name || receiverType + ' User',
+          type: receiverType === 'REFERRAL' ? 'customer' : 'employee',
+          reference_id: receiverId ? receiverId.toString() : null,
+        },
+      },
+      queue_if_low_balance: true,
+    };
+
+    const payoutRes = await fetch(payoutsUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payoutPayload),
+    });
+
+    const payoutData = await payoutRes.json();
+    if (payoutData.error) {
+      throw new Error(payoutData.error.description || 'Payout failed');
+    }
+
+    // Update Payout Record
+    payoutRecord.razorpayPayoutId = payoutData.id;
+    payoutRecord.status = payoutData.status; // e.g., 'queued', 'pending', 'processing'
+    await payoutRecord.save();
+
+    // Update Transaction if referral
+    if (receiverType === 'REFERRAL' && transactionId) {
+      await PaymentTransaction.findByIdAndUpdate(transactionId, {
+        referralPaymentStatus: 'sent',
+        referralPayoutId: payoutData.id,
+      });
+    }
+
+    return payoutData;
+  } catch (error) {
+    logger.error(`${receiverType} payout failed:`, error.message);
+    if (transactionId && receiverType === 'REFERRAL') {
+      await PaymentTransaction.findByIdAndUpdate(transactionId, {
+        referralPaymentStatus: 'failed',
+      });
+    }
+    // Update Payout Record as failed
+    await Payout.findOneAndUpdate(
+      { transactionId, receiverType, status: 'pending' },
+      { status: 'failed', errorMessage: error.message }
+    );
+    throw error;
+  }
+};
+
+//#region Teacher Salary Payout
+export const payTeacherSalary = async (req, res) => {
+  try {
+    const { teacherId, amount, upiId } = req.body;
+
+    if (!teacherId || !amount || !upiId) {
+      return ResponseHandler(
+        res,
+        StatusCodes.BAD_REQUEST,
+        'Teacher ID, Amount, and UPI ID are required'
+      );
+    }
+
+    // Fetch teacher name
+    const teacher = await Teacher.findById(teacherId);
+    if (!teacher) {
+      return ResponseHandler(res, StatusCodes.NOT_FOUND, 'Teacher not found');
+    }
+
+    // Trigger direct payout
+    const payoutData = await triggerPayout({
+      transactionId: null,
+      receiverType: 'TEACHER',
+      receiverId: teacherId,
+      upiId: upiId,
+      amount: amount,
+      name: teacher.fullName,
+    });
+
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      'Salary payout initiated',
+      payoutData
+    );
+  } catch (error) {
+    logger.error('Salary Payout Error:', error);
+    return CatchErrorHandler(res, error, 'Failed to initiate salary payout');
+  }
+};
+//#endregion
 //#endregion
 
 //#region Get Transactions
