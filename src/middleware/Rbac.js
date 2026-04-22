@@ -73,6 +73,14 @@ export const checkPermission = (requiredPermission) => {
           await req.school.populate('planId');
         }
 
+        if (req.school && req.school.isActivePlan === false) {
+          return ResponseHandler(
+            res,
+            StatusCodes.FORBIDDEN,
+            responseMessage.PLAN_EXPIRED
+          );
+        }
+
         const planPermissions = req.school?.planId?.permissions || [];
         if (!planPermissions.includes(requiredPermission)) {
           // 🔹 Record Violation
