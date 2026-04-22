@@ -255,5 +255,6 @@ export const responseMessage = {
     "Your school's subscription plan does not include this feature. Please upgrade your plan.",
   PLAN_VIOLATION_BLOCKED:
     'Access temporarily suspended for 3 hours due to repeated unauthorized access attempts.',
-  PLAN_EXPIRED: 'Your plan has expired. Please renew your subscription to continue using this feature.',
+  PLAN_EXPIRED:
+    'Your plan has expired. Please renew your subscription to continue using this feature.',
 };

@@ -260,7 +260,10 @@ export const razorpayWebhook = async (req, res) => {
               // If school already has an active plan that hasn't expired yet, extend from that date
               // Otherwise, start from current date
               let baseDate = currentDate;
-              if (school.PlanExptyDate && school.PlanExptyDate > currentDate.getTime()) {
+              if (
+                school.PlanExptyDate &&
+                school.PlanExptyDate > currentDate.getTime()
+              ) {
                 baseDate = new Date(school.PlanExptyDate);
               }
 
@@ -276,11 +279,16 @@ export const razorpayWebhook = async (req, res) => {
               school.isActivePlan = true;
               await school.save();
 
-              logger.info(`Updated school ${school.schoolName} plan to ${plan.planName}. New expiry: ${newExpiryDate}`);
+              logger.info(
+                `Updated school ${school.schoolName} plan to ${plan.planName}. New expiry: ${newExpiryDate}`
+              );
             }
           }
         } catch (planError) {
-          logger.error('Failed to update school plan after payment:', planError);
+          logger.error(
+            'Failed to update school plan after payment:',
+            planError
+          );
         }
       }
 
