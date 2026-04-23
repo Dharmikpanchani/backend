@@ -41,6 +41,8 @@ adminRoutes.post(
   SchoolController.getSchoolImageByCode
 );
 
+adminRoutes.get('/get-school-by-code', SchoolController.getSchoolByCode);
+
 // Fully protected Root school Routes (RBAC Applied)
 adminRoutes.get(
   '/school-profile',

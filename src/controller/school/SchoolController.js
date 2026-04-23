@@ -752,3 +752,44 @@ export const getDeveloperWiseSchoolPlan = async (req, res) => {
   }
 };
 //#endregion
+
+//#region Get School By Code
+export const getSchoolByCode = async (req, res) => {
+  try {
+    const { schoolCode } = req.query;
+
+    if (!schoolCode) {
+      return ResponseHandler(
+        res,
+        StatusCodes.BAD_REQUEST,
+        responseMessage.SCHOOL_CODE_REQUIRED
+      );
+    }
+
+    const school = await School.findOne({
+      schoolCode,
+      isDeleted: false,
+    }).populate('planId');
+
+    if (!school) {
+      return ResponseHandler(
+        res,
+        StatusCodes.NOT_FOUND,
+        responseMessage.SCHOOL_NOT_FOUND
+      );
+    }
+
+    const theme = await SchoolTheme.findOne({ schoolId: school._id });
+
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.SCHOOL_RETRIEVED_SUCCESSFULLY,
+      { ...school.toObject(), theme: theme || {} }
+    );
+  } catch (error) {
+    logger.error(`Get School By Code error: ${error}`);
+    return CatchErrorHandler(res, error);
+  }
+};
+//#endregion

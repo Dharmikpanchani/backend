@@ -28,31 +28,63 @@ let payoutsUrl = process.env.PAYOUTS_URL;
 export const createSchoolPlan = async (req, res) => {
   try {
     const {
-      amount,
+      amount: clientAmount, // We'll ignore this for security
       currency = 'INR',
-      schoolId,
-      userId,
+      schoolId: initialSchoolId,
+      schoolCode,
+      userId: initialUserId,
       planId,
+      billingCycle = 'yearly',
       type = 'SUBSCRIPTION', // SUBSCRIPTION | FEES
     } = req.body;
 
-    if (!amount) {
+    let schoolId = initialSchoolId || req.school_id;
+    let userId = initialUserId || req.admin_id;
+
+    // 1. Resolve School if only schoolCode is provided
+    if (!schoolId && schoolCode) {
+      const school = await School.findOne({ schoolCode, isDeleted: false });
+      if (!school) {
+        return ResponseHandler(
+          res,
+          StatusCodes.NOT_FOUND,
+          responseMessage.SCHOOL_NOT_FOUND
+        );
+      }
+      schoolId = school._id;
+    }
+
+    if (!schoolId) {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
-        responseMessage.AMOUNT_REQUIRED
+        'School ID or School Code is required'
+      );
+    }
+
+    // 2. Resolve Plan and Calculate Amount
+    const plan = await Plan.findById(planId);
+    if (!plan) {
+      return ResponseHandler(res, StatusCodes.NOT_FOUND, 'Plan not found');
+    }
+
+    const amount = billingCycle === 'monthly' ? plan.monPrice : plan.yerPrice;
+
+    if (!amount || amount <= 0) {
+      return ResponseHandler(
+        res,
+        StatusCodes.BAD_REQUEST,
+        'Invalid plan price'
       );
     }
 
     // Fetch school to get referral details if subscription
     let referralId = null;
     let referralUpiId = null;
-    if (schoolId) {
-      const school = await School.findById(schoolId).populate('referralId');
-      if (school && school.referralId) {
-        referralId = school.referralId._id;
-        referralUpiId = school.referralId.UPIId;
-      }
+    const school = await School.findById(schoolId).populate('referralId');
+    if (school && school.referralId) {
+      referralId = school.referralId._id;
+      referralUpiId = school.referralId.UPIId;
     }
 
     const order = await razorpay.orders.create({
