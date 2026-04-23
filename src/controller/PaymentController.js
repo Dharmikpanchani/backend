@@ -28,7 +28,7 @@ let payoutsUrl = process.env.PAYOUTS_URL;
 export const createSchoolPlan = async (req, res) => {
   try {
     const {
-      amount: clientAmount, // We'll ignore this for security
+      // amount: _clientAmount, // Removed to avoid lint error
       currency = 'INR',
       schoolId: initialSchoolId,
       schoolCode,
