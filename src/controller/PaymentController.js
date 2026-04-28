@@ -143,7 +143,9 @@ export const verifyPayment = async (req, res) => {
       );
     }
 
-    const transaction = await PaymentTransaction.findOne({ razorpayOrderId: razorpay_order_id });
+    const transaction = await PaymentTransaction.findOne({
+      razorpayOrderId: razorpay_order_id,
+    });
     if (!transaction) {
       return ResponseHandler(
         res,
@@ -167,7 +169,12 @@ export const verifyPayment = async (req, res) => {
 };
 //#endregion
 
-const processSuccessfulPayment = async (transaction, paymentId, method = null, webhookData = null) => {
+const processSuccessfulPayment = async (
+  transaction,
+  paymentId,
+  method = null,
+  webhookData = null
+) => {
   if (transaction.status === 'success') return;
 
   transaction.status = 'success';
@@ -214,7 +221,10 @@ const processSuccessfulPayment = async (transaction, paymentId, method = null, w
         name: referralName,
       });
     } catch (payoutError) {
-      logger.error('Referral payout failed during payment success:', payoutError.message);
+      logger.error(
+        'Referral payout failed during payment success:',
+        payoutError.message
+      );
     }
   } else {
     // No referral or no UPI ID provided for referral -> 100% to admin/super-developer
@@ -252,7 +262,8 @@ const processSuccessfulPayment = async (transaction, paymentId, method = null, w
           }
 
           let newExpiryDate = new Date(baseDate);
-          const cycle = transaction.billingCycle || plan.billingCycle || 'monthly';
+          const cycle =
+            transaction.billingCycle || plan.billingCycle || 'monthly';
           if (cycle === 'monthly') {
             newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
           } else if (cycle === 'yearly') {
@@ -272,7 +283,9 @@ const processSuccessfulPayment = async (transaction, paymentId, method = null, w
           school.isActivePlan = true;
           await school.save();
 
-          logger.info(`Updated school ${school.schoolName} plan to ${plan.planName}. New expiry: ${newExpiryDate}`);
+          logger.info(
+            `Updated school ${school.schoolName} plan to ${plan.planName}. New expiry: ${newExpiryDate}`
+          );
         }
       }
     } catch (planError) {
@@ -331,7 +344,12 @@ export const razorpayWebhook = async (req, res) => {
     }
 
     if (event === 'payment.captured' || event === 'order.paid') {
-      await processSuccessfulPayment(transaction, payment.id, payment.method, data);
+      await processSuccessfulPayment(
+        transaction,
+        payment.id,
+        payment.method,
+        data
+      );
     }
 
     if (event === 'payment.failed') {
