@@ -108,6 +108,11 @@ const PaymentTransactionSchema = new mongoose.Schema(
       enum: ['SUBSCRIPTION', 'FEES', 'SALARY'],
       default: 'SUBSCRIPTION',
     },
+    billingCycle: {
+      type: String,
+      enum: ['monthly', 'yearly'],
+      default: 'monthly',
+    },
     referralId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',

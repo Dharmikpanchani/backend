@@ -102,6 +102,7 @@ export const createSchoolPlan = async (req, res) => {
       currency,
       status: 'pending',
       type,
+      billingCycle,
       referralId,
       referralUpiId,
       razorpayOrderId: order.id,
@@ -142,14 +143,17 @@ export const verifyPayment = async (req, res) => {
       );
     }
 
-    await PaymentTransaction.findOneAndUpdate(
-      { razorpayOrderId: razorpay_order_id },
-      {
-        razorpayPaymentId: razorpay_payment_id,
-        razorpaySignature: razorpay_signature,
-        status: 'authorized',
-      }
-    );
+    const transaction = await PaymentTransaction.findOne({ razorpayOrderId: razorpay_order_id });
+    if (!transaction) {
+      return ResponseHandler(
+        res,
+        StatusCodes.NOT_FOUND,
+        responseMessage.TRANSACTION_NOT_FOUND
+      );
+    }
+
+    transaction.razorpaySignature = razorpay_signature;
+    await processSuccessfulPayment(transaction, razorpay_payment_id);
 
     return ResponseHandler(
       res,
@@ -162,6 +166,122 @@ export const verifyPayment = async (req, res) => {
   }
 };
 //#endregion
+
+const processSuccessfulPayment = async (transaction, paymentId, method = null, webhookData = null) => {
+  if (transaction.status === 'success') return;
+
+  transaction.status = 'success';
+  transaction.userPaymentStatus = 'success';
+  if (paymentId) {
+    transaction.transactionId = paymentId;
+    transaction.razorpayPaymentId = paymentId;
+  }
+  if (method) transaction.method = method;
+  if (webhookData) transaction.webhookData = webhookData;
+
+  const amount = transaction.amount;
+  transaction.totalAmount = amount;
+
+  // ================= COMMISSION LOGIC (20% to Referral) =================
+  if (
+    transaction.type === 'SUBSCRIPTION' &&
+    transaction.referralId &&
+    transaction.referralUpiId
+  ) {
+    const referralCommission = Math.round(amount * 0.2); // 20% commission
+    const platformRevenue = amount - referralCommission;
+
+    transaction.commissionAmount = referralCommission;
+    transaction.adminAmount = platformRevenue;
+    transaction.referralAmount = referralCommission;
+    transaction.referralPaymentStatus = 'processing';
+
+    // Fetch referral name from Admin record
+    let referralName = 'Referral Developer';
+    const referralAdmin = await Admin.findById(transaction.referralId);
+    if (referralAdmin) {
+      referralName = referralAdmin.name || referralName;
+    }
+
+    // Trigger Payout for Referral
+    try {
+      await triggerPayout({
+        transactionId: transaction._id,
+        receiverType: 'REFERRAL',
+        receiverId: transaction.referralId,
+        upiId: transaction.referralUpiId,
+        amount: referralCommission,
+        name: referralName,
+      });
+    } catch (payoutError) {
+      logger.error('Referral payout failed during payment success:', payoutError.message);
+    }
+  } else {
+    // No referral or no UPI ID provided for referral -> 100% to admin/super-developer
+    transaction.adminAmount = amount;
+    transaction.commissionAmount = 0;
+    transaction.referralAmount = 0;
+    if (transaction.referralId) {
+      transaction.referralPaymentStatus = 'failed';
+    }
+  }
+
+  // ================= FEES PAYMENT LOGIC =================
+  if (transaction.type === 'FEES') {
+    transaction.adminPaymentStatus = 'received';
+  }
+
+  // ================= UPDATE SCHOOL PLAN LOGIC =================
+  if (
+    transaction.type === 'SUBSCRIPTION' &&
+    transaction.planId &&
+    transaction.schoolId
+  ) {
+    try {
+      const plan = await Plan.findById(transaction.planId);
+      if (plan) {
+        const school = await School.findById(transaction.schoolId);
+        if (school) {
+          const currentDate = new Date();
+          let baseDate = currentDate;
+          if (
+            school.PlanExptyDate &&
+            school.PlanExptyDate > currentDate.getTime()
+          ) {
+            baseDate = new Date(school.PlanExptyDate);
+          }
+
+          let newExpiryDate = new Date(baseDate);
+          const cycle = transaction.billingCycle || plan.billingCycle || 'monthly';
+          if (cycle === 'monthly') {
+            newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
+          } else if (cycle === 'yearly') {
+            newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
+          }
+
+          school.plan = {
+            planName: plan.planName,
+            monPrice: plan.monPrice,
+            monOfferPrice: plan.monOfferPrice,
+            yerPrice: plan.yerPrice,
+            yerOfferPrice: plan.yerOfferPrice,
+            billingCycle: cycle,
+            permissions: plan.permissions,
+          };
+          school.PlanExptyDate = newExpiryDate.getTime();
+          school.isActivePlan = true;
+          await school.save();
+
+          logger.info(`Updated school ${school.schoolName} plan to ${plan.planName}. New expiry: ${newExpiryDate}`);
+        }
+      }
+    } catch (planError) {
+      logger.error('Failed to update school plan after payment:', planError);
+    }
+  }
+
+  await transaction.save();
+};
 
 //#region Webhook
 export const razorpayWebhook = async (req, res) => {
@@ -211,128 +331,7 @@ export const razorpayWebhook = async (req, res) => {
     }
 
     if (event === 'payment.captured' || event === 'order.paid') {
-      transaction.status = 'success';
-      transaction.userPaymentStatus = 'success';
-      transaction.transactionId = payment.id;
-      transaction.razorpayPaymentId = payment.id;
-      transaction.method = payment.method;
-      transaction.webhookData = data;
-
-      const amount = transaction.amount;
-      transaction.totalAmount = amount;
-
-      // ================= COMMISSION LOGIC (20% to Referral) =================
-      // Only apply 20/80 split if referralId exists AND they have a UPI ID set
-      if (
-        transaction.type === 'SUBSCRIPTION' &&
-        transaction.referralId &&
-        transaction.referralUpiId
-      ) {
-        const referralCommission = Math.round(amount * 0.2); // 20% commission
-        const platformRevenue = amount - referralCommission;
-
-        transaction.commissionAmount = referralCommission;
-        transaction.adminAmount = platformRevenue;
-        transaction.referralAmount = referralCommission;
-        transaction.referralPaymentStatus = 'processing';
-
-        // Fetch referral name from Admin record
-        let referralName = 'Referral Developer';
-        const referralAdmin = await Admin.findById(transaction.referralId);
-        if (referralAdmin) {
-          referralName = referralAdmin.name || referralName;
-        }
-
-        // Trigger Payout for Referral
-        try {
-          await triggerPayout({
-            transactionId: transaction._id,
-            receiverType: 'REFERRAL',
-            receiverId: transaction.referralId,
-            upiId: transaction.referralUpiId,
-            amount: referralCommission,
-            name: referralName,
-          });
-        } catch (payoutError) {
-          logger.error(
-            'Referral payout failed during webhook:',
-            payoutError.message
-          );
-          // status is already updated in triggerPayout's catch block for the Payout record
-        }
-      } else {
-        // No referral or no UPI ID provided for referral -> 100% to admin/super-developer
-        transaction.adminAmount = amount;
-        transaction.commissionAmount = 0;
-        transaction.referralAmount = 0;
-        if (transaction.referralId) {
-          transaction.referralPaymentStatus = 'failed';
-        }
-      }
-
-      // ================= FEES PAYMENT LOGIC =================
-      if (transaction.type === 'FEES') {
-        // Platform collects full amount, to be settled to school later
-        // Optionally trigger payout to school here or manually
-        transaction.adminPaymentStatus = 'received';
-      }
-
-      // ================= UPDATE SCHOOL PLAN LOGIC =================
-      if (
-        transaction.type === 'SUBSCRIPTION' &&
-        transaction.planId &&
-        transaction.schoolId
-      ) {
-        try {
-          const plan = await Plan.findById(transaction.planId);
-          if (plan) {
-            const school = await School.findById(transaction.schoolId);
-            if (school) {
-              const currentDate = new Date();
-              // If school already has an active plan that hasn't expired yet, extend from that date
-              // Otherwise, start from current date
-              let baseDate = currentDate;
-              if (
-                school.PlanExptyDate &&
-                school.PlanExptyDate > currentDate.getTime()
-              ) {
-                baseDate = new Date(school.PlanExptyDate);
-              }
-
-              let newExpiryDate = new Date(baseDate);
-              if (plan.billingCycle === 'monthly') {
-                newExpiryDate.setMonth(newExpiryDate.getMonth() + 1);
-              } else if (plan.billingCycle === 'yearly') {
-                newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
-              }
-
-              school.plan = {
-                planName: plan.planName,
-                monPrice: plan.monPrice,
-                monOfferPrice: plan.monOfferPrice,
-                yerPrice: plan.yerPrice,
-                yerOfferPrice: plan.yerOfferPrice,
-                billingCycle: plan.billingCycle,
-                permissions: plan.permissions,
-              };
-              school.PlanExptyDate = newExpiryDate.getTime();
-              school.isActivePlan = true;
-              await school.save();
-
-              logger.info(
-                `Updated school ${school.schoolName} plan to ${plan.planName}. New expiry: ${newExpiryDate}`
-              );
-            }
-          }
-        } catch (planError) {
-          logger.error(
-            'Failed to update school plan after payment:',
-            planError
-          );
-        }
-      }
-
-      await transaction.save();
+      await processSuccessfulPayment(transaction, payment.id, payment.method, data);
     }
 
     if (event === 'payment.failed') {
