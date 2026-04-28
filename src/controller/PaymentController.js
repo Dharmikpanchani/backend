@@ -195,7 +195,7 @@ const processSuccessfulPayment = async (
     transaction.referralId &&
     transaction.referralUpiId
   ) {
-    const referralCommission = Math.round(amount * 0.2); // 20% commission
+    const referralCommission = Math.round(amount * 0.3); // 30% commission
     const platformRevenue = amount - referralCommission;
 
     transaction.commissionAmount = referralCommission;
