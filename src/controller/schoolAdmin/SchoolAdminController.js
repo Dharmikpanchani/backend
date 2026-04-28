@@ -49,9 +49,6 @@ export const login = async (req, res) => {
       .populate('role')
       .populate({
         path: 'schoolId',
-        populate: {
-          path: 'planId',
-        },
       });
 
     if (!admin) {
@@ -188,9 +185,6 @@ export const verifyOtpCommon = async (req, res) => {
         .populate('role')
         .populate({
           path: 'schoolId',
-          populate: {
-            path: 'planId',
-          },
         });
 
       if (type === 'login') {
@@ -571,9 +565,6 @@ export const profile = async (req, res) => {
       .populate({
         path: 'schoolId',
         select: '-referralId -__v',
-        populate: {
-          path: 'planId',
-        },
       });
 
     if (!admin) {
@@ -640,7 +631,7 @@ export const profile = async (req, res) => {
 
     const responseData = {
       ...adminObj,
-      planData: schoolId?.planId || null,
+      planData: schoolId?.plan || null,
       PlanExptyDate: schoolId?.PlanExptyDate || null,
       schoolData: { ...schoolId, theme: theme || {} },
     };

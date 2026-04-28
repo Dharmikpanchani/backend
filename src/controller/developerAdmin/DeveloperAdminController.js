@@ -274,7 +274,6 @@ export const getAdminById = async (req, res) => {
       .populate({ path: 'role', select: 'role isActive' })
       .populate({
         path: 'schoolId',
-        populate: { path: 'planId' },
       });
 
     if (!admin) {
@@ -313,7 +312,7 @@ export const getAdminById = async (req, res) => {
           registrationNumber,
           establishedYear,
         },
-        populate: [{ path: 'planId' }],
+
       });
 
       adminData.schools = result.data;

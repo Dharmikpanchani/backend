@@ -111,10 +111,14 @@ const SchoolSchema = new mongoose.Schema(
       ref: 'Admin',
       default: null,
     },
-    planId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'Plan',
-      default: null,
+    plan: {
+      planName: { type: String, default: '' },
+      monPrice: { type: Number, default: 0 },
+      monOfferPrice: { type: Number, default: 0 },
+      yerPrice: { type: Number, default: 0 },
+      yerOfferPrice: { type: Number, default: 0 },
+      billingCycle: { type: String, default: 'monthly' },
+      permissions: [{ type: String }],
     },
     PlanExptyDate: {
       type: Number,

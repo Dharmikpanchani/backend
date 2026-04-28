@@ -60,6 +60,14 @@ export const addEditSchool = async (req, res) => {
         );
       }
 
+      if (schoolCode && schoolCode.toLowerCase() === 'pay') {
+        return ResponseHandler(
+          res,
+          StatusCodes.BAD_REQUEST,
+          "'pay' is a reserved keyword for payments and cannot be used as School Code"
+        );
+      }
+
       // Check for duplicates (excluding current school)
       const duplicate = await School.findOne({
         _id: { $ne: id },
@@ -128,7 +136,7 @@ export const addEditSchool = async (req, res) => {
 
       const updatedSchool = await School.findByIdAndUpdate(id, updateData, {
         new: true,
-      }).populate('planId');
+      });
 
       return ResponseHandler(
         res,
@@ -203,7 +211,16 @@ export const addEditSchool = async (req, res) => {
         schoolCode,
         password: schoolPassword,
         referralId: req.developer_id,
-        planId: freePlan ? freePlan._id : null,
+
+        plan: freePlan ? {
+          planName: freePlan.planName,
+          monPrice: freePlan.monPrice,
+          monOfferPrice: freePlan.monOfferPrice,
+          yerPrice: freePlan.yerPrice,
+          yerOfferPrice: freePlan.yerOfferPrice,
+          billingCycle: freePlan.billingCycle,
+          permissions: freePlan.permissions,
+        } : {},
         address,
         city,
         state,
@@ -267,7 +284,7 @@ export const addEditSchool = async (req, res) => {
 //#region Profile GET/UPDATE (for School Admin Portal)
 export const getProfile = async (req, res) => {
   try {
-    const school = await School.findById(req.school_id).populate('planId');
+    const school = await School.findById(req.school_id);
     if (!school) {
       return ResponseHandler(
         res,
@@ -301,7 +318,7 @@ export const getProfile = async (req, res) => {
       affiliationCertificate: school.affiliationCertificate,
       isActive: school.isActive,
       PlanExptyDate: school.PlanExptyDate,
-      planData: school.planId,
+      planData: school.plan,
     };
 
     return ResponseHandler(
@@ -440,19 +457,9 @@ export const getAllSchools = async (req, res) => {
       isDeleted: false,
     };
 
-    // If planName filter is provided, find matching plan IDs
+    // If planName filter is provided, find matching plan
     if (planName) {
-      const matchingPlans = await Plan.find({
-        planName: { $regex: planName, $options: 'i' },
-        isDeleted: false,
-      }).select('_id');
-
-      if (matchingPlans.length > 0) {
-        filters.planId = { $in: matchingPlans.map((p) => p._id) };
-      } else {
-        // Force no results if planName specified but no plans match
-        filters.planId = '000000000000000000000000';
-      }
+      filters['plan.planName'] = { $regex: planName, $options: 'i' };
     }
 
     // Clean up filters
@@ -516,7 +523,7 @@ export const getAllSchools = async (req, res) => {
       filters,
       populate: [
         { path: 'referralId', select: 'name email phoneNumber' },
-        { path: 'planId' },
+
       ],
     });
 
@@ -545,7 +552,7 @@ export const getSchoolById = async (req, res) => {
     const data = await School.findOne({
       _id: schoolId,
       isDeleted: false,
-    }).populate('planId');
+    });
     if (!data) {
       return ResponseHandler(
         res,
@@ -769,7 +776,7 @@ export const getSchoolByCode = async (req, res) => {
     const school = await School.findOne({
       schoolCode,
       isDeleted: false,
-    }).populate('planId');
+    });
 
     if (!school) {
       return ResponseHandler(
