@@ -306,7 +306,6 @@ export const razorpayWebhook = async (req, res) => {
                 newExpiryDate.setFullYear(newExpiryDate.getFullYear() + 1);
               }
 
-
               school.plan = {
                 planName: plan.planName,
                 monPrice: plan.monPrice,

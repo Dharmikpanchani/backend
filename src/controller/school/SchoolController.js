@@ -212,15 +212,17 @@ export const addEditSchool = async (req, res) => {
         password: schoolPassword,
         referralId: req.developer_id,
 
-        plan: freePlan ? {
-          planName: freePlan.planName,
-          monPrice: freePlan.monPrice,
-          monOfferPrice: freePlan.monOfferPrice,
-          yerPrice: freePlan.yerPrice,
-          yerOfferPrice: freePlan.yerOfferPrice,
-          billingCycle: freePlan.billingCycle,
-          permissions: freePlan.permissions,
-        } : {},
+        plan: freePlan
+          ? {
+              planName: freePlan.planName,
+              monPrice: freePlan.monPrice,
+              monOfferPrice: freePlan.monOfferPrice,
+              yerPrice: freePlan.yerPrice,
+              yerOfferPrice: freePlan.yerOfferPrice,
+              billingCycle: freePlan.billingCycle,
+              permissions: freePlan.permissions,
+            }
+          : {},
         address,
         city,
         state,
@@ -521,10 +523,7 @@ export const getAllSchools = async (req, res) => {
       ],
       extraOrConditions,
       filters,
-      populate: [
-        { path: 'referralId', select: 'name email phoneNumber' },
-
-      ],
+      populate: [{ path: 'referralId', select: 'name email phoneNumber' }],
     });
 
     const data = {

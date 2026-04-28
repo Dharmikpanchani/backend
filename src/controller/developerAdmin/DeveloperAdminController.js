@@ -312,7 +312,6 @@ export const getAdminById = async (req, res) => {
           registrationNumber,
           establishedYear,
         },
-
       });
 
       adminData.schools = result.data;
