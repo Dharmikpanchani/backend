@@ -507,7 +507,8 @@ export const payTeacherSalary = async (req, res) => {
 //#region Get Transactions
 export const getTransactions = async (req, res) => {
   try {
-    const { status, schoolId, userId } = req.query;
+    const { status, schoolId, userId, referralId } = req.query;
+    const { isSuperDeveloper, _id: adminId } = req.admin || {};
 
     let filter = {};
 
@@ -515,9 +516,21 @@ export const getTransactions = async (req, res) => {
     if (schoolId) filter.schoolId = schoolId;
     if (userId) filter.userId = userId;
 
-    const transactions = await PaymentTransaction.find(filter).sort({
-      createdAt: -1,
-    });
+    // Access Control Logic
+    if (!isSuperDeveloper) {
+      // If not super developer, only show transactions where they are the referral
+      filter.referralId = adminId;
+    } else if (referralId) {
+      // Super developer can filter by any referralId if provided
+      filter.referralId = referralId;
+    }
+
+    const transactions = await PaymentTransaction.find(filter)
+      .populate('schoolId', 'schoolName schoolCode logo email phoneNumber')
+      .populate('referralId', 'name email UPIId')
+      .sort({
+        createdAt: -1,
+      });
 
     return ResponseHandler(
       res,
