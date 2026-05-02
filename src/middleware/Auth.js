@@ -57,6 +57,28 @@ export const userAuth = async (req, res, next) => {
       );
     }
 
+    if (userIdentity.isDeleted) {
+      return ResponseHandler(
+        res,
+        StatusCodes.UNAUTHORIZED,
+        responseMessage.USER_ACCOUNT_DELETED
+      );
+    }
+    if (!userIdentity.isActive) {
+      return ResponseHandler(
+        res,
+        StatusCodes.UNAUTHORIZED,
+        responseMessage.USER_NOT_ACTIVE
+      );
+    }
+    if (!userIdentity.isLogin) {
+      return ResponseHandler(
+        res,
+        StatusCodes.UNAUTHORIZED,
+        'Your session has expired. Please log in again.'
+      );
+    }
+
     let userProfile;
     if (userIdentity.userType === config.TEACHER) {
       userProfile = await Teacher.findById(userIdentity.teacherId);
@@ -72,30 +94,9 @@ export const userAuth = async (req, res, next) => {
       );
     }
 
-    if (userProfile.isDeleted) {
-      return ResponseHandler(
-        res,
-        StatusCodes.UNAUTHORIZED,
-        responseMessage.USER_ACCOUNT_DELETED
-      );
-    }
-    if (!userProfile.isActive) {
-      return ResponseHandler(
-        res,
-        StatusCodes.UNAUTHORIZED,
-        responseMessage.USER_NOT_ACTIVE
-      );
-    }
-    if (!userProfile.isLogin) {
-      return ResponseHandler(
-        res,
-        StatusCodes.UNAUTHORIZED,
-        'Your session has expired. Please log in again.'
-      );
-    }
-
     req.user_id = userProfile._id;
     req.user = userProfile;
+    req.school_id = userIdentity.schoolId;
     req.userType = userIdentity.userType;
     req.userIdentity = userIdentity;
     req.identityId = userIdentity._id;

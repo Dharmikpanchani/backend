@@ -19,6 +19,10 @@ const developerRoutes = Router();
 
 //#region Auth & Profile Management
 developerRoutes.use('/login', authLimiter);
+developerRoutes.use('/verify-otp', authLimiter);
+developerRoutes.use('/re-send-otp', authLimiter);
+developerRoutes.use('/forgot-password', authLimiter);
+developerRoutes.use('/reset-password', authLimiter);
 
 developerRoutes.post(
   '/login',
@@ -27,14 +31,12 @@ developerRoutes.post(
 );
 developerRoutes.post(
   '/verify-otp',
-  authLimiter,
   validator('developerVerifyOtpCommonSchema'),
   DeveloperAuthController.verifyOtpCommon
 );
 
 developerRoutes.post(
   '/re-send-otp',
-  authLimiter,
   validator('developerSendOtpCommonSchema'),
   DeveloperAuthController.sendOtp
 );

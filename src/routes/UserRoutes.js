@@ -1,28 +1,36 @@
 import { Router } from 'express';
 import * as UserController from '../controller/user/UserController.js';
+import * as SchoolController from '../controller/school/SchoolController.js';
 import { authLimiter } from '../middleware/RateLimit.js';
 import { validator } from '../middleware/Validator.js';
-import { schoolScope, userAuth } from '../middleware/Auth.js';
+import { schoolScope, userAuth, refreshTokenAuth } from '../middleware/Auth.js';
 
 const userRoutes = Router();
 
 userRoutes.use('/login', authLimiter);
+userRoutes.use('/re-send-otp', authLimiter);
+userRoutes.use('/verify-otp', authLimiter);
+userRoutes.use('/forgot-password', authLimiter);
+userRoutes.use('/reset-password', authLimiter);
+
+userRoutes.post(
+  '/get-school-image',
+  schoolScope,
+  validator('getSchoolImageSchema'),
+  SchoolController.getSchoolImageByCode
+);
+userRoutes.get('/all-school-codes', UserController.getSchoolCodes);
+
+userRoutes.get('/profile', userAuth, schoolScope, UserController.getProfile);
 
 userRoutes.post(
   '/getSchool-profile',
+  userAuth,
   schoolScope,
   validator('getSchoolProfileSchema'),
   UserController.getSchoolProfile
 );
 
-userRoutes.get('/all-school-codes', UserController.getSchoolCodes);
-
-userRoutes.get(
-  '/get-profile',
-  userAuth,
-  schoolScope,
-  UserController.getProfile
-);
 userRoutes.post(
   '/login',
   schoolScope,
@@ -31,7 +39,7 @@ userRoutes.post(
 );
 
 userRoutes.post(
-  '/send-otp',
+  '/re-send-otp',
   schoolScope,
   validator('userSendOtpSchema'),
   UserController.sendOtp
@@ -57,6 +65,14 @@ userRoutes.post(
   validator('userResetPasswordSchema'),
   UserController.resetPassword
 );
+
+userRoutes.post(
+  '/refresh-token',
+  refreshTokenAuth,
+  UserController.refreshToken
+);
+
+userRoutes.post('/logout', refreshTokenAuth, UserController.logout);
 
 userRoutes.post(
   '/change-password',

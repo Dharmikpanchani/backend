@@ -33,6 +33,9 @@ const adminRoutes = Router();
 adminRoutes.use('/login', authLimiter);
 adminRoutes.use('/register', authLimiter);
 adminRoutes.use('/verify-otp', authLimiter);
+adminRoutes.use('/forgot-password', authLimiter);
+adminRoutes.use('/reset-password', authLimiter);
+adminRoutes.use('/re-send-otp', authLimiter);
 
 adminRoutes.post(
   '/get-school-image',
@@ -82,7 +85,6 @@ adminRoutes.post(
 );
 adminRoutes.post(
   '/verify-otp',
-  authLimiter,
   schoolScope,
   validator('adminVerifyOtpCommonSchema'),
   AdminController.verifyOtpCommon
@@ -112,7 +114,6 @@ adminRoutes.post(
 
 adminRoutes.post(
   '/re-send-otp',
-  authLimiter,
   schoolScope,
   validator('adminSendOtpCommonSchema'),
   AdminController.sendOtp

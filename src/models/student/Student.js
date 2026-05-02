@@ -51,21 +51,6 @@ const StudentSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
-    isActive: {
-      type: Boolean,
-      default: false,
-    },
-    isVerified: {
-      type: Boolean,
-      default: false,
-    },
-    isLogin: {
-      type: Boolean,
-      default: false,
-    },
-    lastLogin: {
-      type: Date,
-    },
 
     // 🔹 4. Academic Details
     admissionNumber: {
@@ -114,10 +99,6 @@ const StudentSchema = new mongoose.Schema(
     updatedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Admin',
-    },
-    isDeleted: {
-      type: Boolean,
-      default: false,
     },
   },
   { timestamps: true }

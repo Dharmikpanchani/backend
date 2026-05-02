@@ -284,8 +284,6 @@ export const addEditTeacher = async (req, res) => {
         shiftTiming,
         schoolId,
         createdBy: adminId,
-        isActive: false,
-        isVerified: false,
       });
 
       // 2. Create User identity
@@ -348,9 +346,6 @@ export const getTeachers = async (req, res) => {
       pageNumber,
       perPageData,
       searchRequest,
-      isActive,
-      isVerified,
-      type,
       joiningDate,
       designation,
       employmentType,
@@ -359,8 +354,6 @@ export const getTeachers = async (req, res) => {
 
     const filters = {
       ...req.schoolFilter,
-      isActive: type ? true : isActive,
-      isVerified: isVerified,
     };
 
     if (departmentId) filters.departmentId = departmentId;
@@ -377,7 +370,6 @@ export const getTeachers = async (req, res) => {
       perPageData,
       searchRequest,
       searchableFields: ['fullName', 'email', 'phoneNumber', 'designation'],
-      booleanFields: ['isActive', 'isVerified'],
       filters,
       populate: [
         { path: 'departmentId', select: 'name' },
@@ -447,17 +439,23 @@ export const teacherStatusHandler = async (req, res) => {
       );
     }
 
-    const newStatus = !teacher.isActive;
+    const user = await User.findOne({ teacherId: id });
+    if (!user) {
+      return ResponseHandler(
+        res,
+        StatusCodes.NOT_FOUND,
+        responseMessage.USER_NOT_FOUND
+      );
+    }
 
-    // Toggle Teacher
-    const updatedTeacher = await Teacher.findByIdAndUpdate(
-      id,
-      { isActive: newStatus },
-      { new: true }
-    );
+    const newStatus = !user.isActive;
 
-    // Sync with User
-    await User.findOneAndUpdate({ teacherId: id }, { isActive: newStatus });
+    // Toggle User status (Teacher doesn't have status fields anymore)
+    user.isActive = newStatus;
+    await user.save();
+
+    // Re-fetch teacher to return updated (though status won't be in it)
+    const updatedTeacher = await Teacher.findById(id);
 
     return ResponseHandler(
       res,
@@ -488,8 +486,8 @@ export const deleteTeacher = async (req, res) => {
     // 1. Soft delete User identity
     await User.findOneAndUpdate({ teacherId: id }, { isDeleted: true });
 
-    // 2. Soft delete Teacher profile
-    await Teacher.findOneAndUpdate({ _id: id, schoolId }, { isDeleted: true });
+    // Note: Teacher profile remains but is linked to a deleted User.
+    // In the future, you might want to use a lookup/join to hide these.
 
     return ResponseHandler(
       res,

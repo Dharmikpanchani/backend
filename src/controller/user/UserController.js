@@ -12,6 +12,7 @@ import {
   generateAccessToken,
   generateRefreshToken,
   setRefreshTokenCookie,
+  clearRefreshTokenCookie,
 } from '../../services/TokenService.js';
 import User from '../../models/user/User.js';
 import Teacher from '../../models/teacher/Teacher.js';
@@ -68,9 +69,28 @@ export const getSchoolCodes = async (req, res) => {
 //#region 👤 Get User Profile (Authenticated)
 export const getProfile = async (req, res) => {
   try {
-    const userProfile = req.user;
-    const userIdentity = req.userIdentity;
-    const school = req.school;
+    const { userIdentity, userType, school } = req;
+
+    let userProfile;
+    if (userType === config.TEACHER) {
+      userProfile = await Teacher.findById(userIdentity.teacherId)
+        .populate('departmentId')
+        .populate('subjects')
+        .populate('classesAssigned')
+        .populate('sectionsAssigned')
+        .populate({
+          path: 'schoolId',
+          select: '-referralId -__v',
+        });
+    } else if (userType === config.STUDENT) {
+      userProfile = await Student.findById(userIdentity.studentId)
+        .populate('classId')
+        .populate('sectionId')
+        .populate({
+          path: 'schoolId',
+          select: '-referralId -__v',
+        });
+    }
 
     if (!userProfile) {
       return ResponseHandler(
@@ -82,20 +102,24 @@ export const getProfile = async (req, res) => {
 
     const theme = await SchoolTheme.findOne({ schoolId: school._id });
 
-    const data = {
-      profile: userProfile,
+    const userProfileObj = userProfile.toObject();
+    const schoolData = userProfileObj.schoolId;
+
+    const responseData = {
+      ...userProfileObj,
       identity: userIdentity,
-      school: {
-        ...school.toObject(),
-        theme: theme || {},
-      },
+      userType: userType,
+      schoolData: { ...schoolData, theme: theme || {} },
     };
+
+    delete responseData.schoolId;
+    delete responseData.password;
 
     return ResponseHandler(
       res,
       StatusCodes.OK,
       responseMessage.PROFILE_FOUND,
-      data
+      responseData
     );
   } catch (error) {
     return CatchErrorHandler(res, error);
@@ -129,12 +153,10 @@ export const login = async (req, res) => {
     if (userIdentity.userType === config.TEACHER) {
       userProfile = await Teacher.findOne({
         _id: userIdentity.teacherId,
-        isDeleted: false,
       });
     } else if (userIdentity.userType === config.STUDENT) {
       userProfile = await Student.findOne({
         _id: userIdentity.studentId,
-        isDeleted: false,
       });
     }
 
@@ -159,7 +181,7 @@ export const login = async (req, res) => {
       );
     }
 
-    if (!userProfile.isActive) {
+    if (!userIdentity.isActive) {
       return ResponseHandler(
         res,
         StatusCodes.BAD_REQUEST,
@@ -167,7 +189,7 @@ export const login = async (req, res) => {
       );
     }
 
-    if (!userProfile.isVerified) {
+    if (!userIdentity.isVerified) {
       const otpNamespace =
         userIdentity.userType === config.TEACHER
           ? config.TEACHER
@@ -196,7 +218,7 @@ export const login = async (req, res) => {
       return ResponseHandler(
         res,
         StatusCodes.OK,
-        responseMessage.ACCOUNT_NOT_VERIFIED,
+        'Your account is not verified. OTP sent to your phone number.',
         {
           requireOtp: true,
           phoneNumber,
@@ -220,9 +242,9 @@ export const login = async (req, res) => {
     setRefreshTokenCookie(res, refreshToken);
 
     // 4. Update last login
-    userProfile.lastLogin = new Date();
-    userProfile.isLogin = true;
-    await userProfile.save();
+    userIdentity.lastLogin = new Date();
+    userIdentity.isLogin = true;
+    await userIdentity.save();
 
     const userData = userProfile.toObject();
     delete userData.password;
@@ -336,12 +358,10 @@ export const verifyOtp = async (req, res) => {
     if (userIdentity.userType === config.TEACHER) {
       userProfile = await Teacher.findOne({
         _id: userIdentity.teacherId,
-        isDeleted: false,
       });
     } else if (userIdentity.userType === config.STUDENT) {
       userProfile = await Student.findOne({
         _id: userIdentity.studentId,
-        isDeleted: false,
       });
     }
 
@@ -355,11 +375,7 @@ export const verifyOtp = async (req, res) => {
 
     // If verifying for login, complete the activation and return tokens
     if (type === 'login') {
-      if (!userProfile.isVerified) {
-        userProfile.isVerified = true;
-        userProfile.isActive = true;
-        await userProfile.save();
-
+      if (!userIdentity.isVerified) {
         userIdentity.isActive = true;
         userIdentity.isVerified = true;
         await userIdentity.save();
@@ -376,9 +392,9 @@ export const verifyOtp = async (req, res) => {
       const refreshToken = generateRefreshToken(payload);
       setRefreshTokenCookie(res, refreshToken);
 
-      userProfile.isLogin = true;
-      userProfile.lastLogin = new Date();
-      await userProfile.save();
+      userIdentity.isLogin = true;
+      userIdentity.lastLogin = new Date();
+      await userIdentity.save();
 
       const userData = userProfile.toObject();
       delete userData.password;
@@ -574,12 +590,10 @@ export const changePhoneNumberRequest = async (req, res) => {
     const phoneExists = await Teacher.findOne({
       phoneNumber: newPhoneNumber,
       schoolId: userProfile.schoolId,
-      isDeleted: false,
     });
     const studentPhoneExists = await Student.findOne({
       phoneNumber: newPhoneNumber,
       schoolId: userProfile.schoolId,
-      isDeleted: false,
     });
 
     if (phoneExists || studentPhoneExists) {
@@ -631,6 +645,96 @@ export const verifyPhoneNumberChange = async (req, res) => {
       res,
       StatusCodes.OK,
       responseMessage.PHONE_NUMBER_UPDATED_SUCCESSFULLY
+    );
+  } catch (error) {
+    return CatchErrorHandler(res, error);
+  }
+};
+
+export const refreshToken = async (req, res) => {
+  try {
+    const { token_id, token_type } = req;
+
+    if (token_type !== 'user') {
+      return ResponseHandler(
+        res,
+        StatusCodes.FORBIDDEN,
+        responseMessage.INVALID_TOKEN_TYPE
+      );
+    }
+
+    const userIdentity = await User.findById(token_id);
+    if (!userIdentity || userIdentity.isDeleted) {
+      clearRefreshTokenCookie(res);
+      return ResponseHandler(
+        res,
+        StatusCodes.UNAUTHORIZED,
+        responseMessage.INVALID_OR_DISABLED_ACCOUNT ||
+          'Your session has expired or your account is restricted. Please log in again.'
+      );
+    }
+
+    let userProfile;
+    if (userIdentity.userType === config.TEACHER) {
+      userProfile = await Teacher.findById(userIdentity.teacherId);
+    } else if (userIdentity.userType === config.STUDENT) {
+      userProfile = await Student.findById(userIdentity.studentId);
+    }
+
+    if (
+      !userProfile ||
+      userIdentity.isDeleted ||
+      !userIdentity.isActive ||
+      !userIdentity.isLogin
+    ) {
+      clearRefreshTokenCookie(res);
+      return ResponseHandler(
+        res,
+        StatusCodes.UNAUTHORIZED,
+        responseMessage.INVALID_OR_DISABLED_ACCOUNT ||
+          'Your session has expired or your account is restricted. Please log in again.'
+      );
+    }
+
+    const payload = {
+      id: userIdentity._id,
+      profileId: userProfile._id,
+      type: 'user',
+      userType: userIdentity.userType,
+    };
+    const newAccessToken = generateAccessToken(payload);
+    const newRefreshToken = generateRefreshToken(payload);
+
+    setRefreshTokenCookie(res, newRefreshToken);
+
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.TOKEN_REFRESHED_SUCCESSFULLY,
+      {
+        accessToken: newAccessToken,
+      }
+    );
+  } catch (error) {
+    return CatchErrorHandler(res, error);
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    const { token_id } = req;
+    const userIdentity = await User.findById(token_id);
+
+    if (userIdentity) {
+      userIdentity.isLogin = false;
+      await userIdentity.save();
+    }
+
+    clearRefreshTokenCookie(res);
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.LOGGED_OUT_SUCCESSFULLY
     );
   } catch (error) {
     return CatchErrorHandler(res, error);

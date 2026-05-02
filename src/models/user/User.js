@@ -42,6 +42,26 @@ const UserSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    isLogin: {
+      type: Boolean,
+      default: false,
+    },
+    lastLogin: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

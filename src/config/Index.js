@@ -26,7 +26,7 @@ const config = {
   TEACHER: 'teacher',
   STUDENT: 'student',
   // FIRST_PLAN_EXPIRY: () => moment().add(1, 'month').unix(),
-  FIRST_PLAN_EXPIRY: () => moment().add(1, 'hour').unix(),
+  FIRST_PLAN_EXPIRY: () => moment().add(1, 'month').unix(),
 };
 
 export default config;
