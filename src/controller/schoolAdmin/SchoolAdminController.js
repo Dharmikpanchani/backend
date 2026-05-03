@@ -650,7 +650,18 @@ export const profile = async (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { name, email, phoneNumber } = req.body;
+    const {
+      name,
+      email,
+      phoneNumber,
+      address,
+      city,
+      state,
+      country,
+      zipCode,
+      latitude,
+      longitude,
+    } = req.body;
     const existingDuplicate = await Admin.findOne({
       _id: { $ne: req.admin_id },
       $or: [{ email }, { phoneNumber }],
@@ -672,6 +683,13 @@ export const updateProfile = async (req, res) => {
         name,
         email,
         phoneNumber,
+        address,
+        city,
+        state,
+        country,
+        zipCode,
+        latitude,
+        longitude,
         [req.imageUrl ? 'image' : '']: req.imageUrl,
       },
       { new: true }

@@ -421,8 +421,15 @@ const developerResetPasswordSchema = joi.object().keys({
 const developerUpdateProfileSchema = joi.object({
   name: joistring.optional().label('Name'),
   email: joistring.optional().email().label('Email'),
-  phoneNumber: joistring.optional().label('Phone number'),
+  phoneNumber: joistring.required().label('Phone number'),
   address: joistring.optional().allow('').label('Address'),
+  city: joistring.optional().allow('').label('City'),
+  state: joistring.optional().allow('').label('State'),
+  zipCode: joistring.optional().allow('').label('Zip Code'),
+  country: joistring.optional().allow('').label('Country'),
+  latitude: joi.number().optional().allow(null, '').label('Latitude'),
+  longitude: joi.number().optional().allow(null, '').label('Longitude'),
+  UPIId: joistring.optional().allow('', null).label('UPI ID'),
   imageUrl: commonImageValidation(false).label('Image'),
 });
 

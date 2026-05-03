@@ -293,11 +293,8 @@ export const refreshTokenAuth = async (req, res, next) => {
   try {
     const refreshToken = req.cookies?.refreshToken;
 
-    logger.info(
-      `Refresh token request received. Cookie present: ${!!refreshToken}`
-    );
-
     if (!refreshToken) {
+      logger.info('Refresh token missing from cookies');
       return ResponseHandler(
         res,
         StatusCodes.UNAUTHORIZED,

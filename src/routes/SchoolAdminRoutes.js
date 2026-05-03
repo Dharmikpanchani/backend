@@ -138,6 +138,7 @@ adminRoutes.patch(
   adminAuth,
   schoolScope,
   MediaUpload(),
+  validator('developerUpdateProfileSchema'),
   AdminController.updateProfile
 );
 

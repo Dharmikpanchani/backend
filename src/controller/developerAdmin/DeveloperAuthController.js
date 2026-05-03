@@ -406,14 +406,34 @@ export const profile = async (req, res) => {
     return CatchErrorHandler(res, error);
   }
 };
-//#endregion
-
 //#region Update Profile
 export const updateProfile = async (req, res) => {
   try {
-    const { name, phoneNumber, address } = req.body;
+    const {
+      name,
+      phoneNumber,
+      address,
+      city,
+      state,
+      zipCode,
+      country,
+      latitude,
+      longitude,
+      UPIId,
+    } = req.body;
 
-    const updateData = { name, phoneNumber, address };
+    const updateData = {
+      name,
+      phoneNumber,
+      address,
+      city,
+      state,
+      zipCode,
+      country,
+      latitude,
+      longitude,
+      UPIId,
+    };
 
     if (req.imageUrl) {
       updateData.image = req.imageUrl;

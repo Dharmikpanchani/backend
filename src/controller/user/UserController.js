@@ -20,6 +20,9 @@ import Student from '../../models/student/Student.js';
 import * as OtpService from '../../services/OtpService.js';
 import * as SmsService from '../../services/SmsService.js';
 import config from '../../config/Index.js';
+import Logger from '../../utils/Logger.js';
+
+const logger = new Logger('src/controller/user/UserController.js');
 
 //#region 🏫 Get School Profile by School Code
 export const getSchoolProfile = async (req, res) => {
@@ -40,6 +43,7 @@ export const getSchoolProfile = async (req, res) => {
       }
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -61,6 +65,7 @@ export const getSchoolCodes = async (req, res) => {
       codes
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -100,6 +105,9 @@ export const getProfile = async (req, res) => {
       );
     }
 
+    // Populate role on userIdentity
+    await userIdentity.populate('role');
+
     const theme = await SchoolTheme.findOne({ schoolId: school._id });
 
     const userProfileObj = userProfile.toObject();
@@ -107,6 +115,7 @@ export const getProfile = async (req, res) => {
 
     const responseData = {
       ...userProfileObj,
+      role: userIdentity.role,
       identity: userIdentity,
       userType: userType,
       schoolData: { ...schoolData, theme: theme || {} },
@@ -128,6 +137,53 @@ export const getProfile = async (req, res) => {
 //#endregion
 //#endregion
 
+//#region 👤 Update User Profile
+export const updateProfile = async (req, res) => {
+  try {
+    const { fullName, email, address, phoneNumber } = req.body;
+    const userProfile = req.user;
+    const userIdentity = req.userIdentity;
+
+    if (phoneNumber && phoneNumber !== userProfile.phoneNumber) {
+      const existingUser = await User.findOne({
+        phoneNumber,
+        schoolId: req.school_id,
+        _id: { $ne: userIdentity._id },
+      });
+      if (existingUser) {
+        return ResponseHandler(
+          res,
+          StatusCodes.CONFLICT,
+          responseMessage.PHONE_ALREADY_EXISTS || 'Phone number already exists'
+        );
+      }
+      userProfile.phoneNumber = phoneNumber;
+      userIdentity.phoneNumber = phoneNumber;
+      await userIdentity.save();
+    }
+
+    userProfile.fullName = fullName || userProfile.fullName;
+    userProfile.email = email || userProfile.email;
+    userProfile.address = address || userProfile.address;
+
+    if (req.imageUrl) {
+      userProfile.profileImage = req.imageUrl;
+    }
+
+    await userProfile.save();
+
+    return ResponseHandler(
+      res,
+      StatusCodes.OK,
+      responseMessage.PROFILE_UPDATED,
+      userProfile
+    );
+  } catch (error) {
+    return CatchErrorHandler(res, error);
+  }
+};
+//#endregion
+
 //#region 🔑 User Login
 export const login = async (req, res) => {
   try {
@@ -139,7 +195,7 @@ export const login = async (req, res) => {
       phoneNumber,
       schoolId: school._id,
       isDeleted: false,
-    });
+    }).populate('role');
 
     if (!userIdentity) {
       return ResponseHandler(
@@ -257,7 +313,11 @@ export const login = async (req, res) => {
       responseMessage.USER_LOGIN_SUCCESSFULLY,
       {
         accessToken,
-        user: { ...userData, userType: userIdentity.userType },
+        user: {
+          ...userData,
+          userType: userIdentity.userType,
+          role: userIdentity.role,
+        },
         school: {
           ...school.toObject(),
           theme: theme || {},
@@ -333,7 +393,7 @@ export const verifyOtp = async (req, res) => {
       phoneNumber,
       schoolId: school._id,
       isDeleted: false,
-    });
+    }).populate('role');
 
     if (!userIdentity) {
       return ResponseHandler(
@@ -406,7 +466,11 @@ export const verifyOtp = async (req, res) => {
         responseMessage.OTP_VERIFIED,
         {
           accessToken,
-          user: { ...userData, userType: userIdentity.userType },
+          user: {
+            ...userData,
+            userType: userIdentity.userType,
+            role: userIdentity.role,
+          },
           school: { ...school.toObject(), theme: theme || {} },
         }
       );
@@ -685,6 +749,7 @@ export const refreshToken = async (req, res) => {
       !userProfile ||
       userIdentity.isDeleted ||
       !userIdentity.isActive ||
+      !userIdentity.isVerified ||
       !userIdentity.isLogin
     ) {
       clearRefreshTokenCookie(res);

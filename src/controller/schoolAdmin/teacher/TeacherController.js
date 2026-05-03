@@ -60,6 +60,7 @@ export const addEditTeacher = async (req, res) => {
       leaveBalance,
       workingHours,
       shiftTiming,
+      role,
     } = req.body;
     const schoolId = req.school_id;
     const adminId = req.admin_id;
@@ -154,7 +155,7 @@ export const addEditTeacher = async (req, res) => {
       // 1. Update User identity
       await User.findOneAndUpdate(
         { teacherId: id },
-        { email, phoneNumber, attendanceId }
+        { email, phoneNumber, attendanceId, role }
       );
 
       // 2. Update Teacher profile - Build update object dynamically to preserve existing files
@@ -296,6 +297,7 @@ export const addEditTeacher = async (req, res) => {
         attendanceId,
         isActive: false,
         isVerified: false,
+        role,
       });
 
       newTeacher.userId = newUser._id;
@@ -376,7 +378,11 @@ export const getTeachers = async (req, res) => {
         { path: 'classesAssigned', select: 'name' },
         { path: 'sectionsAssigned', select: 'code' },
         { path: 'subjects', select: 'name' },
-        { path: 'userId', select: 'otp otpExpireAt' },
+        {
+          path: 'userId',
+          select: 'otp otpExpireAt role',
+          populate: { path: 'role', select: 'role' },
+        },
       ],
     });
 
@@ -402,7 +408,11 @@ export const getTeacherById = async (req, res) => {
       { path: 'classesAssigned', select: 'name' },
       { path: 'sectionsAssigned', select: 'code' },
       { path: 'subjects', select: 'name' },
-      { path: 'userId', select: 'otp otpExpireAt' },
+      {
+        path: 'userId',
+        select: 'otp otpExpireAt role',
+        populate: { path: 'role', select: 'role' },
+      },
     ]);
 
     if (!teacher) {

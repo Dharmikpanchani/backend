@@ -15,6 +15,10 @@ const UserSchema = new mongoose.Schema(
       ref: 'School',
       required: true, // Optional if users can exist without a school, but typically required in SAAS.
     },
+    role: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'RoleManagement',
+    },
     teacherId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Teacher',

@@ -69,6 +69,15 @@ const AdminSchema = new mongoose.Schema(
     },
 
     address: String,
+    city: String,
+    state: String,
+    country: {
+      type: String,
+      default: 'India',
+    },
+    zipCode: String,
+    latitude: String,
+    longitude: String,
 
     isSuperAdmin: {
       type: Boolean,
