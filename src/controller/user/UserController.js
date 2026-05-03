@@ -131,6 +131,7 @@ export const getProfile = async (req, res) => {
       responseData
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -179,6 +180,7 @@ export const updateProfile = async (req, res) => {
       userProfile
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -325,6 +327,7 @@ export const login = async (req, res) => {
       }
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -378,6 +381,7 @@ export const sendOtp = async (req, res) => {
       responseMessage.OTP_SENT_SUCCESSFULLY
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -478,6 +482,7 @@ export const verifyOtp = async (req, res) => {
 
     return ResponseHandler(res, StatusCodes.OK, responseMessage.OTP_VERIFIED);
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -531,6 +536,7 @@ export const forgotPassword = async (req, res) => {
       responseMessage.OTP_SENT_SUCCESSFULLY
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -574,6 +580,7 @@ export const resetPassword = async (req, res) => {
       responseMessage.PASSWORD_RESET_SUCCESSFULLY
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -622,6 +629,7 @@ export const changePassword = async (req, res) => {
       responseMessage.PASSWORD_CHANGE_SUCCESSFULLY
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -683,6 +691,7 @@ export const changePhoneNumberRequest = async (req, res) => {
       responseMessage.OTP_SENT_SUCCESSFULLY
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -711,6 +720,7 @@ export const verifyPhoneNumberChange = async (req, res) => {
       responseMessage.PHONE_NUMBER_UPDATED_SUCCESSFULLY
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -781,6 +791,7 @@ export const refreshToken = async (req, res) => {
       }
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
@@ -802,6 +813,7 @@ export const logout = async (req, res) => {
       responseMessage.LOGGED_OUT_SUCCESSFULLY
     );
   } catch (error) {
+    logger.error(error);
     return CatchErrorHandler(res, error);
   }
 };
